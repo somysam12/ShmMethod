@@ -77,7 +77,7 @@ bool EspRenderer::initEgl() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDisable(GL_DEPTH_TEST);
     glClearColor(0.f, 0.f, 0.f, 0.f);
-    _surfaceReady = true;
+    _surfaceReady.store(true);
     LOGI("EGL init OK %dx%d", _w, _h);
     return true;
 }
@@ -168,45 +168,25 @@ void EspRenderer::destroy() {
     if (_win) { ANativeWindow_release(_win); _win = nullptr; }
 }
 
-// ── Surface pause / resume (called from Java surfaceDestroyed / surfaceCreated) ─
+// ── Surface pause / resume ────────────────────────────────────────────────────
+// Called from the Java main thread — must NOT touch EGL here because EGL contexts
+// are thread-affine and the render thread owns _ctx.  Just set atomic signals;
+// the render thread processes them at the top of its loop.
+
 void EspRenderer::surfaceLost() {
-    _surfaceReady = false;
-    if (_dpy != EGL_NO_DISPLAY) {
-        eglMakeCurrent(_dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, _ctx);
-        if (_surf != EGL_NO_SURFACE) {
-            eglDestroySurface(_dpy, _surf);
-            _surf = EGL_NO_SURFACE;
-        }
-    }
-    if (_win) {
-        ANativeWindow_release(_win);
-        _win = nullptr;
-    }
-    LOGI("surfaceLost: EGL surface destroyed, render thread continues");
+    // Signal render thread to drop the surface on its next iteration.
+    _surfaceLostPending.store(true, std::memory_order_release);
+    LOGI("surfaceLost: signalled render thread");
 }
 
 bool EspRenderer::surfaceRestored(ANativeWindow* newWin, int w, int h) {
-    if (_dpy == EGL_NO_DISPLAY || _ctx == EGL_NO_CONTEXT || _cfg == nullptr) {
-        LOGE("surfaceRestored: EGL not initialized, ignoring");
-        return false;
-    }
-    if (_win) ANativeWindow_release(_win);
-    _win = newWin;
-    _w = w; _h = h;
-
-    _surf = eglCreateWindowSurface(_dpy, _cfg, _win, nullptr);
-    if (_surf == EGL_NO_SURFACE) {
-        LOGE("surfaceRestored: eglCreateWindowSurface failed");
-        return false;
-    }
-    if (!eglMakeCurrent(_dpy, _surf, _surf, _ctx)) {
-        LOGE("surfaceRestored: eglMakeCurrent failed");
-        eglDestroySurface(_dpy, _surf);
-        _surf = EGL_NO_SURFACE;
-        return false;
-    }
-    _surfaceReady = true;
-    LOGI("surfaceRestored: EGL surface recreated %dx%d", w, h);
+    // Store new dimensions first (with relaxed ordering — the window exchange below provides the fence).
+    _pendingRestoreW.store(w, std::memory_order_relaxed);
+    _pendingRestoreH.store(h, std::memory_order_relaxed);
+    // Release-store: render thread picks this up with acquire, ensuring w/h are visible.
+    ANativeWindow* old = _pendingRestoreWin.exchange(newWin, std::memory_order_release);
+    if (old && old != newWin) ANativeWindow_release(old);
+    LOGI("surfaceRestored: queued window %p %dx%d for render thread", newWin, w, h);
     return true;
 }
 
@@ -229,14 +209,49 @@ void EspRenderer::renderLoop() {
     while (_running) {
         nanosleep(&ts, nullptr);
 
-        // Retry SHM open if not yet available
+        // ── Process surface-lost signal (sent by Java surfaceDestroyed) ─────────
+        if (_surfaceLostPending.load(std::memory_order_acquire)) {
+            _surfaceLostPending.store(false, std::memory_order_relaxed);
+            _surfaceReady = false;
+            if (_surf != EGL_NO_SURFACE) {
+                eglMakeCurrent(_dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+                eglDestroySurface(_dpy, _surf);
+                _surf = EGL_NO_SURFACE;
+            }
+            if (_win) { ANativeWindow_release(_win); _win = nullptr; }
+            LOGI("render: surface lost handled");
+        }
+
+        // ── Process surface-restore signal (sent by Java surfaceCreated) ────────
+        ANativeWindow* newWin = _pendingRestoreWin.exchange(nullptr, std::memory_order_acquire);
+        if (newWin) {
+            if (_win && _win != newWin) ANativeWindow_release(_win);
+            _win = newWin;
+            _w   = _pendingRestoreW.load(std::memory_order_relaxed);
+            _h   = _pendingRestoreH.load(std::memory_order_relaxed);
+            // Destroy any stale surface first
+            if (_surf != EGL_NO_SURFACE) {
+                eglMakeCurrent(_dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+                eglDestroySurface(_dpy, _surf);
+                _surf = EGL_NO_SURFACE;
+            }
+            _surf = eglCreateWindowSurface(_dpy, _cfg, _win, nullptr);
+            if (_surf != EGL_NO_SURFACE && eglMakeCurrent(_dpy, _surf, _surf, _ctx)) {
+                _surfaceReady = true;
+                LOGI("render: surface restored %dx%d", _w, _h);
+            } else {
+                LOGE("render: surface restore failed (err=0x%x)", eglGetError());
+                _surfaceReady = false;
+            }
+        }
+
+        // ── Retry SHM open if not yet available ──────────────────────────────────
         if (!_shmPtr) { openShm(); }
 
         EspFrame frame{};
         if (_shmPtr) {
             const volatile EspFrameHeader* hdr =
                 reinterpret_cast<const volatile EspFrameHeader*>(_shmPtr);
-            // Seqlock read
             uint32_t s1, s2;
             int tries = 0;
             do {
@@ -264,8 +279,12 @@ void EspRenderer::renderLoop() {
         if (!swapOk) {
             EGLint err = eglGetError();
             if (err == EGL_BAD_SURFACE || err == EGL_BAD_NATIVE_WINDOW) {
-                LOGE("eglSwapBuffers surface lost (err=0x%x), pausing", err);
+                LOGE("render: eglSwapBuffers surface gone (err=0x%x)", err);
                 _surfaceReady = false;
+                // Destroy the bad surface now (we're on the render thread — safe)
+                eglMakeCurrent(_dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+                eglDestroySurface(_dpy, _surf);
+                _surf = EGL_NO_SURFACE;
             }
         }
     }

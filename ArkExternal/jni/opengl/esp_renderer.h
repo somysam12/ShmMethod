@@ -95,8 +95,15 @@ private:
     EGLConfig    _cfg  = nullptr;
     ANativeWindow* _win = nullptr;
     int          _w = 0, _h = 0;
-    std::atomic<bool> _surfaceReady{false};
     GLuint       _colorProg = 0, _texProg = 0;
+
+    // Surface lifecycle — written by main thread, processed by render thread only.
+    // All actual EGL calls stay on the render thread to avoid EGL threading violations.
+    std::atomic<bool>          _surfaceReady{false};
+    std::atomic<bool>          _surfaceLostPending{false};
+    std::atomic<ANativeWindow*> _pendingRestoreWin{nullptr};
+    std::atomic<int>            _pendingRestoreW{0};
+    std::atomic<int>            _pendingRestoreH{0};
     GlBatch      _batch;
     FontAtlas    _font;
     std::thread  _thread;
