@@ -124,7 +124,7 @@ public:
                     sizeof(ColorVertex), (void*)0);
                 glVertexAttribPointer(aCol, 4, GL_FLOAT, GL_FALSE,
                     sizeof(ColorVertex), (void*)(2 * sizeof(float)));
-                glLineWidth(1.5f);
+                glLineWidth(2.5f);
                 glDrawArrays(GL_LINES, 0, (GLsizei)_lines.size());
             }
 

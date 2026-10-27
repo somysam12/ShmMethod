@@ -70,6 +70,25 @@ static void s_rect(float l,float t,float r,float b){
     glEnableVertexAttribArray(s_sAPOS);
     glDrawArrays(GL_TRIANGLE_STRIP,0,4);
 }
+static void s_pill(float cx,float y,float w,float h,float r,float g,float b,float a){
+    float cr=h*0.38f,x=cx-w*0.5f;
+    s_col(r,g,b,a);
+    s_rect(x+cr,y,x+w-cr,y+h);
+    s_rect(x,y+cr*0.5f,x+cr,y+h-cr*0.5f);
+    s_rect(x+w-cr,y+cr*0.5f,x+w,y+h-cr*0.5f);
+}
+static void s_pillBorder(float cx,float y,float w,float h,float r,float g,float b,float a){
+    float cr=h*0.38f,x=cx-w*0.5f,lw=1.5f;
+    s_col(r,g,b,a);
+    s_line(x+cr,y,x+w-cr,y,lw);
+    s_line(x+cr,y+h,x+w-cr,y+h,lw);
+    s_line(x,y+cr*0.5f,x,y+h-cr*0.5f,lw);
+    s_line(x+w,y+cr*0.5f,x+w,y+h-cr*0.5f,lw);
+    s_line(x,y+cr*0.5f,x+cr,y,lw);
+    s_line(x+w-cr,y,x+w,y+cr*0.5f,lw);
+    s_line(x,y+h-cr*0.5f,x+cr,y+h,lw);
+    s_line(x+w-cr,y+h,x+w,y+h-cr*0.5f,lw);
+}
 
 // 5×7 pixel font
 static const uint8_t S_F5x7[][5]={
@@ -214,21 +233,70 @@ static void StreamESP_DrawFrame(
     float sx=(gameW>0)?(float)s_sW/(float)gameW:1.f;
     float sy=(gameH>0)?(float)s_sH/(float)gameH:1.f;
 
-    // ── 1. Enemy Counter — red box, white 2-digit text "EE - BB" ─────────
-    const float CSC = 2.2f;
-    char cbuf[48];
-    snprintf(cbuf,sizeof(cbuf),"%02d - %02d",enemyCount,botCount);
-    float ctw=s_txtW(cbuf,CSC), cth=7.f*CSC;
-    float ctx2=(float)s_sW*0.5f-ctw*0.5f, cty=14.f;
-    // Red filled background (100% opacity — matches the canvas pill colour)
-    s_col(1.f,0.f,0.f,1.f); s_rect(ctx2-10,cty-5,ctx2+ctw+10,cty+cth+5);
-    // White text
-    s_col(0,0,0,0.9f); s_drawTxt(cbuf,ctx2+1,cty+1,CSC);
-    s_col(1.f,1.f,1.f,1.f); s_drawTxt(cbuf,ctx2,cty,CSC);
+    // ── 1. Enemy Counter — metallic pill, screen mid-top ────────────────────
+    const float CSC  = 2.2f;
+    const float PILH = 30.f;
+    const float PADX = 14.f;
+    const float cth  = 7.f * CSC;
+    const float PILY = 10.f;
+    const float pillCX = (float)s_sW * 0.5f;
+    float lineOriginX = pillCX;
+    float lineOriginY = PILY + PILH + 6.f;
 
-    // Line origin — below counter, same Y as canvas (screenW/2, ~60)
-    float lineOriginY = cty+cth+12.f;
-    float lineOriginX = (float)s_sW*0.5f;
+    if(enemyCount<=0 && botCount<=0){
+        const char* clrStr="Clear";
+        float ctw=s_txtW(clrStr,CSC), pillW=ctw+PADX*2.f;
+        s_pill(pillCX,PILY,pillW,PILH,0.07f,0.20f,0.10f,0.90f);
+        s_pill(pillCX,PILY,pillW,PILH*0.32f,0.30f,0.90f,0.40f,0.14f);
+        s_pillBorder(pillCX,PILY,pillW,PILH,0.22f,0.78f,0.33f,0.60f);
+        float tx=pillCX-ctw*0.5f, ty=PILY+(PILH-cth)*0.5f;
+        s_col(0,0,0,0.80f); s_drawTxt(clrStr,tx+1,ty+1,CSC);
+        s_col(0.42f,1.f,0.52f,1.f); s_drawTxt(clrStr,tx,ty,CSC);
+    } else if(enemyCount>0 && botCount<=0){
+        char cbuf[8]; snprintf(cbuf,sizeof(cbuf),"%02d",enemyCount);
+        float ctw=s_txtW(cbuf,CSC), pillW=ctw+PADX*2.f;
+        s_pill(pillCX,PILY,pillW,PILH,0.22f,0.06f,0.07f,0.90f);
+        s_pill(pillCX,PILY,pillW,PILH*0.32f,1.f,0.30f,0.30f,0.12f);
+        s_pillBorder(pillCX,PILY,pillW,PILH,0.85f,0.24f,0.26f,0.65f);
+        float tx=pillCX-ctw*0.5f, ty=PILY+(PILH-cth)*0.5f;
+        s_col(0,0,0,0.80f); s_drawTxt(cbuf,tx+1,ty+1,CSC);
+        s_col(1.f,0.45f,0.45f,1.f); s_drawTxt(cbuf,tx,ty,CSC);
+    } else if(enemyCount<=0 && botCount>0){
+        char cbuf[8]; snprintf(cbuf,sizeof(cbuf),"%02d",botCount);
+        float ctw=s_txtW(cbuf,CSC), pillW=ctw+PADX*2.f;
+        s_pill(pillCX,PILY,pillW,PILH,0.20f,0.18f,0.04f,0.90f);
+        s_pill(pillCX,PILY,pillW,PILH*0.32f,1.f,0.88f,0.20f,0.12f);
+        s_pillBorder(pillCX,PILY,pillW,PILH,0.88f,0.78f,0.24f,0.65f);
+        float tx=pillCX-ctw*0.5f, ty=PILY+(PILH-cth)*0.5f;
+        s_col(0,0,0,0.80f); s_drawTxt(cbuf,tx+1,ty+1,CSC);
+        s_col(1.f,0.90f,0.35f,1.f); s_drawTxt(cbuf,tx,ty,CSC);
+    } else {
+        char ebuf[8],bbuf[8];
+        snprintf(ebuf,sizeof(ebuf),"%02d",enemyCount);
+        snprintf(bbuf,sizeof(bbuf),"%02d",botCount);
+        float etw=s_txtW(ebuf,CSC),btw=s_txtW(bbuf,CSC);
+        float halfW=(etw>btw?etw:btw)+PADX*2.f;
+        float pillW=halfW*2.f;
+        float lx=pillCX-pillW*0.5f,cr2=PILH*0.38f;
+        s_pill(pillCX,PILY,pillW,PILH,0.10f,0.10f,0.14f,0.92f);
+        s_col(0.55f,0.06f,0.08f,0.48f);
+        s_rect(lx+cr2,PILY,pillCX,PILY+PILH);
+        s_rect(lx,PILY+cr2*0.5f,lx+cr2,PILY+PILH-cr2*0.5f);
+        s_col(0.45f,0.38f,0.04f,0.48f);
+        s_rect(pillCX,PILY,lx+pillW-cr2,PILY+PILH);
+        s_rect(lx+pillW-cr2,PILY+cr2*0.5f,lx+pillW,PILY+PILH-cr2*0.5f);
+        s_pill(pillCX,PILY,pillW,PILH*0.32f,0.70f,0.72f,0.80f,0.10f);
+        s_pillBorder(pillCX,PILY,pillW,PILH,0.55f,0.58f,0.68f,0.55f);
+        s_col(0.55f,0.58f,0.68f,0.50f);
+        s_line(pillCX,PILY+3.f,pillCX,PILY+PILH-3.f,1.f);
+        float tY=PILY+(PILH-cth)*0.5f;
+        float etx=(lx+pillCX)*0.5f-etw*0.5f;
+        float btx=(pillCX+lx+pillW)*0.5f-btw*0.5f;
+        s_col(0,0,0,0.80f); s_drawTxt(ebuf,etx+1,tY+1,CSC);
+        s_col(1.f,0.45f,0.45f,1.f); s_drawTxt(ebuf,etx,tY,CSC);
+        s_col(0,0,0,0.80f); s_drawTxt(bbuf,btx+1,tY+1,CSC);
+        s_col(1.f,0.90f,0.35f,1.f); s_drawTxt(bbuf,btx,tY,CSC);
+    }
 
     // ── 2. Watermark — "ARK"=yellow "CHEAT"=orange "BGMI"=white, no overlap ─
     // watermark parameter is "ARK CHEAT BGMI" — split and colour each word
@@ -255,7 +323,7 @@ static void StreamESP_DrawFrame(
     //  ex=90 keeps it clear of rounded corner cutout in landscape.
     //  Expiry string already formatted as "ACCESS VALIDITY X DAYS" by KC_BuildExpiryStr.
     if(expiry && expiry[0]){
-        const float esc=2.2f;  // slightly smaller so long strings don't overflow
+        const float esc=3.2f;
         float tw=s_txtW(expiry,esc), th=7.f*esc;
         float ex=90.f, ey=(float)s_sH-th-22.f;  // 90px from left — past rounded corner
         s_col(0,0,0,0.75f); s_rect(ex-6,ey-4,ex+tw+6,ey+th+4);
@@ -267,7 +335,7 @@ static void StreamESP_DrawFrame(
     for(int i=0;i<vcount;i++){
         const StreamVehicle& v=vehicles[i];
         float vx=v.scrX*sx, vy=v.scrY*sy;
-        const float vsc=1.5f;
+        const float vsc=2.5f;
         // name + distance text
         char vbuf[48];
         snprintf(vbuf,sizeof(vbuf),"%s(%dm)",v.name,(int)v.distance);
@@ -308,7 +376,7 @@ static void StreamESP_DrawFrame(
         // ESP Line — counter → box top
         if(drawLine){
             s_col(cr,cg,cb2,1.f);
-            s_line(lineOriginX,lineOriginY, bCX, bT, 1.8f);
+            s_line(lineOriginX,lineOriginY, bCX, bT, 3.5f);
         }
 
         // Skeleton — remapped into fixed box so it never scales with distance.

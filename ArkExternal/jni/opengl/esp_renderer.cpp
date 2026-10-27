@@ -328,7 +328,7 @@ void EspRenderer::drawFrame(const EspFrame& frame) {
             snprintf(buf, sizeof(buf), "%s (%.0fm)",
                      v.name[0] ? v.name : "Vehicle", v.dist);
             if (_font.ready()) {
-                _font.drawTextCentered(_batch, buf, vx, vy, 1.f, r, g, b, 0.9f);
+                _font.drawTextCentered(_batch, buf, vx, vy, 1.5f, r, g, b, 0.9f);
             }
         }
     }
@@ -336,7 +336,7 @@ void EspRenderer::drawFrame(const EspFrame& frame) {
     // HUD: FPS top-left
     if (frame.fps > 0 && _font.ready()) {
         char buf[32]; snprintf(buf, sizeof(buf), "FPS:%d", frame.fps);
-        _font.drawText(_batch, buf, 160.f, 36.f, 0.9f, 0.f, 1.f, 1.f, 0.9f);
+        _font.drawText(_batch, buf, 16.f, 12.f, 1.4f, 0.f, 1.f, 1.f, 0.9f);
     }
 
     // Watermark bottom-right: tri-color ARK(white) CHEAT(orange) BGMI(lime)
@@ -368,15 +368,14 @@ void EspRenderer::drawPlayer(const EspPlayer& p, float sw, float sh) {
     float rootX = p.rootX * sw;
     float rootY = p.rootY * sh;
 
-    // Proportional box
-    float rawH  = rootY - headY;
-    float boxH  = rawH > 16.f ? rawH : 16.f;
-    float boxW  = boxH * 0.52f;
-    float boxCX = (headX + rootX) * 0.5f;
-    float bL    = boxCX - boxW * 0.5f;
-    float bR    = boxCX + boxW * 0.5f;
+    // Fixed-size box — same pixel dimensions at every distance
+    const float FBW = 44.f, FBH = 72.f;
+    float boxCX = headX;
+    float boxW  = FBW;
+    float bL    = headX - FBW * 0.5f;
+    float bR    = headX + FBW * 0.5f;
     float bT    = headY - 2.f;
-    float bB    = (rawH >= 16.f) ? (rootY + 2.f) : (bT + boxH + 4.f);
+    float bB    = bT + FBH;
 
     // Box color
     float br, bg, bb;
@@ -452,47 +451,93 @@ void EspRenderer::drawPlayer(const EspPlayer& p, float sw, float sh) {
     }
 }
 
-// ── Enemy count panel (center-top) ───────────────────────────────────────────
+// ── Enemy count panel — metallic pill, center-top ────────────────────────────
 float EspRenderer::drawCountPanel(int ec, int bc, float sw, float /*sh*/) {
-    if (ec <= 0 && bc <= 0) return 0.f;
+    const float PILH = 34.f;
+    const float PADX = 22.f;
+    const float PILY = 12.f;
+    float pillCX = sw * 0.5f;
 
-    const float TW     = 90.f;
-    const float ROW_H  = 18.f;
-    const float PAD    = 7.f;
-    const float HDR_H  = ROW_H;
-    int   rows = ec + bc;
-    float PH   = PAD + HDR_H + rows * ROW_H + PAD;
-    float px   = sw / 2.f - TW / 2.f;
-    float py   = 8.f;
+    auto fillPill = [&](float cx, float y, float w, float h,
+                        float r, float g, float b, float a) {
+        float cr = h * 0.38f, x = cx - w * 0.5f;
+        _batch.fillRect(x+cr,   y,          x+w-cr, y+h,            r,g,b,a);
+        _batch.fillRect(x,      y+cr*0.5f,  x+cr,   y+h-cr*0.5f,   r,g,b,a);
+        _batch.fillRect(x+w-cr, y+cr*0.5f,  x+w,    y+h-cr*0.5f,   r,g,b,a);
+    };
+    auto borderPill = [&](float cx, float y, float w, float h,
+                          float r, float g, float b, float a) {
+        float cr = h * 0.38f, x = cx - w * 0.5f;
+        _batch.line(x+cr,    y,          x+w-cr, y,           r,g,b,a);
+        _batch.line(x+cr,    y+h,        x+w-cr, y+h,         r,g,b,a);
+        _batch.line(x,       y+cr*0.5f,  x,      y+h-cr*0.5f, r,g,b,a);
+        _batch.line(x+w,     y+cr*0.5f,  x+w,    y+h-cr*0.5f, r,g,b,a);
+        _batch.line(x,       y+cr*0.5f,  x+cr,   y,           r,g,b,a);
+        _batch.line(x+w-cr,  y,          x+w,    y+cr*0.5f,   r,g,b,a);
+        _batch.line(x,       y+h-cr*0.5f,x+cr,   y+h,         r,g,b,a);
+        _batch.line(x+w-cr,  y+h,        x+w,    y+h-cr*0.5f, r,g,b,a);
+    };
 
-    // Background
-    _batch.fillRect(px, py, px + TW, py + PH, 0.f, 0.f, 0.f, 0.7f);
-    // Border (corner box style)
-    _batch.cornerBox(px, py, px+TW, py+PH, 1.f, 1.f, 1.f, 0.3f, 1.f);
+    const float fontH  = 28.f;
+    const float tScale = 1.0f;
 
-    if (_font.ready()) {
-        // Header
-        _font.drawTextCentered(_batch, "ENEMIES",
-            px + TW*0.5f, py + PAD, 0.75f,
-            0.78f, 0.82f, 0.86f, 0.82f);
-        // Divider line
-        float divY = py + PAD + HDR_H;
-        _batch.line(px+4, divY, px+TW-4, divY, 1.f, 1.f, 1.f, 0.2f);
+    if (ec <= 0 && bc <= 0) {
+        float tw = _font.ready() ? _font.measureText("Clear", tScale) : 36.f;
+        float pillW = tw + PADX * 2.f;
+        fillPill(pillCX,PILY,pillW,PILH,  0.07f,0.20f,0.10f,0.90f);
+        fillPill(pillCX,PILY,pillW,PILH*0.32f, 0.30f,0.90f,0.40f,0.14f);
+        borderPill(pillCX,PILY,pillW,PILH, 0.22f,0.78f,0.33f,0.60f);
+        if (_font.ready())
+            _font.drawTextCentered(_batch,"Clear",pillCX,
+                PILY+(PILH-fontH)*0.5f,tScale, 0.42f,1.f,0.52f,1.f);
+    } else if (ec > 0 && bc <= 0) {
+        char cbuf[8]; snprintf(cbuf,sizeof(cbuf),"%02d",ec);
+        float tw = _font.ready() ? _font.measureText(cbuf,tScale) : 26.f;
+        float pillW = tw + PADX * 2.f;
+        fillPill(pillCX,PILY,pillW,PILH,  0.22f,0.06f,0.07f,0.90f);
+        fillPill(pillCX,PILY,pillW,PILH*0.32f, 1.f,0.30f,0.30f,0.12f);
+        borderPill(pillCX,PILY,pillW,PILH, 0.85f,0.24f,0.26f,0.65f);
+        if (_font.ready())
+            _font.drawTextCentered(_batch,cbuf,pillCX,
+                PILY+(PILH-fontH)*0.5f,tScale, 1.f,0.45f,0.45f,1.f);
+    } else if (ec <= 0 && bc > 0) {
+        char cbuf[8]; snprintf(cbuf,sizeof(cbuf),"%02d",bc);
+        float tw = _font.ready() ? _font.measureText(cbuf,tScale) : 26.f;
+        float pillW = tw + PADX * 2.f;
+        fillPill(pillCX,PILY,pillW,PILH,  0.20f,0.18f,0.04f,0.90f);
+        fillPill(pillCX,PILY,pillW,PILH*0.32f, 1.f,0.88f,0.20f,0.12f);
+        borderPill(pillCX,PILY,pillW,PILH, 0.88f,0.78f,0.24f,0.65f);
+        if (_font.ready())
+            _font.drawTextCentered(_batch,cbuf,pillCX,
+                PILY+(PILH-fontH)*0.5f,tScale, 1.f,0.90f,0.35f,1.f);
+    } else {
+        char ebuf[8], bbuf[8];
+        snprintf(ebuf,sizeof(ebuf),"%02d",ec);
+        snprintf(bbuf,sizeof(bbuf),"%02d",bc);
+        float etw = _font.ready() ? _font.measureText(ebuf,tScale) : 26.f;
+        float btw = _font.ready() ? _font.measureText(bbuf,tScale) : 26.f;
+        float halfW = std::max(etw,btw) + PADX * 2.f;
+        float pillW = halfW * 2.f;
+        float lx = pillCX - pillW * 0.5f;
+        float crr = PILH * 0.38f;
 
-        float ry = divY + 2.f;
-        for (int i = 0; i < ec; i++) {
-            char buf[12]; snprintf(buf, sizeof(buf), "PLR %d", i+1);
-            _font.drawTextCentered(_batch, buf,
-                px + TW*0.5f, ry, 0.8f, 0.643f, 1.f, 0.451f, 0.9f);
-            ry += ROW_H;
-        }
-        for (int i = 0; i < bc; i++) {
-            char buf[12]; snprintf(buf, sizeof(buf), "BOT %d", i+1);
-            _font.drawTextCentered(_batch, buf,
-                px + TW*0.5f, ry, 0.8f, 1.f, 0.788f, 0.42f, 0.9f);
-            ry += ROW_H;
+        fillPill(pillCX,PILY,pillW,PILH, 0.10f,0.10f,0.14f,0.92f);
+        _batch.fillRect(lx+crr, PILY, pillCX,      PILY+PILH, 0.55f,0.06f,0.08f,0.45f);
+        _batch.fillRect(lx,     PILY+crr*0.5f, lx+crr, PILY+PILH-crr*0.5f, 0.55f,0.06f,0.08f,0.45f);
+        _batch.fillRect(pillCX, PILY, lx+pillW-crr, PILY+PILH, 0.45f,0.38f,0.04f,0.45f);
+        _batch.fillRect(lx+pillW-crr, PILY+crr*0.5f, lx+pillW, PILY+PILH-crr*0.5f, 0.45f,0.38f,0.04f,0.45f);
+        fillPill(pillCX,PILY,pillW,PILH*0.32f, 0.70f,0.72f,0.80f,0.10f);
+        borderPill(pillCX,PILY,pillW,PILH, 0.55f,0.58f,0.68f,0.55f);
+        _batch.line(pillCX, PILY+3.f, pillCX, PILY+PILH-3.f, 0.55f,0.58f,0.68f,0.50f);
+
+        if (_font.ready()) {
+            float tY  = PILY + (PILH - fontH) * 0.5f;
+            float eCX = (lx + pillCX) * 0.5f;
+            float bCX = (pillCX + lx + pillW) * 0.5f;
+            _font.drawTextCentered(_batch,ebuf,eCX,tY,tScale, 1.f,0.45f,0.45f,1.f);
+            _font.drawTextCentered(_batch,bbuf,bCX,tY,tScale, 1.f,0.90f,0.35f,1.f);
         }
     }
 
-    return py + PH; // ESP line origin Y
+    return PILY + PILH;
 }
