@@ -57,16 +57,16 @@ bool EspRenderer::initEgl() {
         EGL_ALPHA_SIZE, 8,
         EGL_NONE
     };
-    EGLConfig cfg; EGLint n = 0;
-    if (!eglChooseConfig(_dpy, attribs, &cfg, 1, &n) || n == 0) {
+    EGLint n = 0;
+    if (!eglChooseConfig(_dpy, attribs, &_cfg, 1, &n) || n == 0) {
         LOGE("eglChooseConfig failed"); return false;
     }
 
     EGLint ctxAttr[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE };
-    _ctx = eglCreateContext(_dpy, cfg, EGL_NO_CONTEXT, ctxAttr);
+    _ctx = eglCreateContext(_dpy, _cfg, EGL_NO_CONTEXT, ctxAttr);
     if (_ctx == EGL_NO_CONTEXT) { LOGE("eglCreateContext failed"); return false; }
 
-    _surf = eglCreateWindowSurface(_dpy, cfg, _win, nullptr);
+    _surf = eglCreateWindowSurface(_dpy, _cfg, _win, nullptr);
     if (_surf == EGL_NO_SURFACE) { LOGE("eglCreateWindowSurface failed"); return false; }
 
     if (!eglMakeCurrent(_dpy, _surf, _surf, _ctx)) {
@@ -77,6 +77,7 @@ bool EspRenderer::initEgl() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glDisable(GL_DEPTH_TEST);
     glClearColor(0.f, 0.f, 0.f, 0.f);
+    _surfaceReady = true;
     LOGI("EGL init OK %dx%d", _w, _h);
     return true;
 }
@@ -167,6 +168,48 @@ void EspRenderer::destroy() {
     if (_win) { ANativeWindow_release(_win); _win = nullptr; }
 }
 
+// ── Surface pause / resume (called from Java surfaceDestroyed / surfaceCreated) ─
+void EspRenderer::surfaceLost() {
+    _surfaceReady = false;
+    if (_dpy != EGL_NO_DISPLAY) {
+        eglMakeCurrent(_dpy, EGL_NO_SURFACE, EGL_NO_SURFACE, _ctx);
+        if (_surf != EGL_NO_SURFACE) {
+            eglDestroySurface(_dpy, _surf);
+            _surf = EGL_NO_SURFACE;
+        }
+    }
+    if (_win) {
+        ANativeWindow_release(_win);
+        _win = nullptr;
+    }
+    LOGI("surfaceLost: EGL surface destroyed, render thread continues");
+}
+
+bool EspRenderer::surfaceRestored(ANativeWindow* newWin, int w, int h) {
+    if (_dpy == EGL_NO_DISPLAY || _ctx == EGL_NO_CONTEXT || _cfg == nullptr) {
+        LOGE("surfaceRestored: EGL not initialized, ignoring");
+        return false;
+    }
+    if (_win) ANativeWindow_release(_win);
+    _win = newWin;
+    _w = w; _h = h;
+
+    _surf = eglCreateWindowSurface(_dpy, _cfg, _win, nullptr);
+    if (_surf == EGL_NO_SURFACE) {
+        LOGE("surfaceRestored: eglCreateWindowSurface failed");
+        return false;
+    }
+    if (!eglMakeCurrent(_dpy, _surf, _surf, _ctx)) {
+        LOGE("surfaceRestored: eglMakeCurrent failed");
+        eglDestroySurface(_dpy, _surf);
+        _surf = EGL_NO_SURFACE;
+        return false;
+    }
+    _surfaceReady = true;
+    LOGI("surfaceRestored: EGL surface recreated %dx%d", w, h);
+    return true;
+}
+
 // ── Render loop ───────────────────────────────────────────────────────────────
 void EspRenderer::renderLoop() {
     if (!initEgl()) { LOGE("EGL init failed, render thread exiting"); return; }
@@ -204,6 +247,8 @@ void EspRenderer::renderLoop() {
             } while (s1 != s2);
         }
 
+        if (!_surfaceReady) continue;
+
         glViewport(0, 0, _w, _h);
         glClear(GL_COLOR_BUFFER_BIT);
         _batch.reset();
@@ -215,7 +260,14 @@ void EspRenderer::renderLoop() {
         }
 
         _batch.flush(_colorProg, _texProg, (float)_w, (float)_h);
-        eglSwapBuffers(_dpy, _surf);
+        EGLBoolean swapOk = eglSwapBuffers(_dpy, _surf);
+        if (!swapOk) {
+            EGLint err = eglGetError();
+            if (err == EGL_BAD_SURFACE || err == EGL_BAD_NATIVE_WINDOW) {
+                LOGE("eglSwapBuffers surface lost (err=0x%x), pausing", err);
+                _surfaceReady = false;
+            }
+        }
     }
 
     LOGI("Render loop exited");
@@ -268,12 +320,16 @@ void EspRenderer::drawFrame(const EspFrame& frame) {
         _font.drawText(_batch, buf, 160.f, 36.f, 0.9f, 0.f, 1.f, 1.f, 0.9f);
     }
 
-    // Watermark bottom-right
+    // Watermark bottom-right: tri-color ARK(white) CHEAT(orange) BGMI(lime)
     if (_font.ready()) {
-        const char* wm = "ARK CHEAT BGMI";
-        float tw = _font.measureText(wm, 1.1f);
-        _font.drawText(_batch, wm, sw - tw - 20.f, sh - 32.f,
-                       1.1f, 1.f, 1.f, 1.f, 0.85f);
+        float tw1 = _font.measureText("ARK",    1.1f);
+        float tw2 = _font.measureText(" CHEAT", 1.1f);
+        float tw3 = _font.measureText(" BGMI",  1.1f);
+        float wmX = sw - tw1 - tw2 - tw3 - 20.f;
+        float wmY = sh - 32.f;
+        _font.drawText(_batch, "ARK",    wmX, wmY, 1.1f, 1.f,   1.f,   1.f,   0.85f); wmX += tw1;
+        _font.drawText(_batch, " CHEAT", wmX, wmY, 1.1f, 1.f,   0.6f,  0.f,   0.85f); wmX += tw2;
+        _font.drawText(_batch, " BGMI",  wmX, wmY, 1.1f, 0.643f,1.f,   0.451f,0.85f);
     }
 }
 

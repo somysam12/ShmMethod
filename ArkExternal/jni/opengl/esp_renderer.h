@@ -85,13 +85,17 @@ public:
     void startRenderThread();
     void stopRenderThread();
     void destroy();
+    void surfaceLost();
+    bool surfaceRestored(ANativeWindow* newWin, int w, int h);
 
 private:
     EGLDisplay   _dpy  = EGL_NO_DISPLAY;
     EGLSurface   _surf = EGL_NO_SURFACE;
     EGLContext   _ctx  = EGL_NO_CONTEXT;
+    EGLConfig    _cfg  = nullptr;
     ANativeWindow* _win = nullptr;
     int          _w = 0, _h = 0;
+    std::atomic<bool> _surfaceReady{false};
     GLuint       _colorProg = 0, _texProg = 0;
     GlBatch      _batch;
     FontAtlas    _font;

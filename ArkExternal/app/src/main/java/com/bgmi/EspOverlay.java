@@ -36,6 +36,8 @@ public class EspOverlay extends Service {
                                          boolean hp, boolean name, boolean dist,
                                          boolean count, boolean veh);
     static native void    nativeStop();
+    static native void    nativeSurfaceLost();
+    static native boolean nativeSurfaceRestored(Surface surface, int w, int h);
 
     // ── Feature flags ─────────────────────────────────────────────────────────
     public static volatile boolean drawLine     = false;
@@ -107,8 +109,8 @@ public class EspOverlay extends Service {
         surfaceView.getHolder().addCallback(new SurfaceHolder.Callback() {
             @Override
             public void surfaceCreated(SurfaceHolder holder) {
+                Surface surf = holder.getSurface();
                 if (!nativeStarted) {
-                    Surface surf = holder.getSurface();
                     boolean ok = nativeInit(surf, screenW, screenH);
                     if (ok) {
                         generateAndUploadFont();
@@ -117,13 +119,19 @@ public class EspOverlay extends Service {
                                        drawName, drawDistance, drawCount, drawVehicle);
                         nativeStarted = true;
                     }
+                } else {
+                    // Render thread still running — restore the EGL surface
+                    nativeSurfaceRestored(surf, screenW, screenH);
                 }
             }
             @Override
             public void surfaceChanged(SurfaceHolder h, int fmt, int w, int t) {}
             @Override
             public void surfaceDestroyed(SurfaceHolder h) {
-                if (nativeStarted) { nativeStop(); nativeStarted = false; }
+                if (nativeStarted) {
+                    // Only destroy the EGL surface; keep render thread alive
+                    nativeSurfaceLost();
+                }
             }
         });
 

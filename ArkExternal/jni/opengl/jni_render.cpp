@@ -92,4 +92,20 @@ Java_com_bgmi_EspOverlay_nativeStop(JNIEnv*, jclass) {
     g_fontPending = false;
 }
 
+JNIEXPORT void JNICALL
+Java_com_bgmi_EspOverlay_nativeSurfaceLost(JNIEnv*, jclass) {
+    LOGI("nativeSurfaceLost");
+    g_renderer.surfaceLost();
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_bgmi_EspOverlay_nativeSurfaceRestored(JNIEnv* env, jclass,
+                                                jobject surface, jint w, jint h) {
+    ANativeWindow* win = ANativeWindow_fromSurface(env, surface);
+    if (!win) { LOGE("nativeSurfaceRestored: null window"); return JNI_FALSE; }
+    bool ok = g_renderer.surfaceRestored(win, (int)w, (int)h);
+    LOGI("nativeSurfaceRestored: %s %dx%d", ok ? "OK" : "FAIL", (int)w, (int)h);
+    return ok ? JNI_TRUE : JNI_FALSE;
+}
+
 } // extern "C"
