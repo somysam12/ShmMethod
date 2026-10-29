@@ -718,8 +718,6 @@ public class OverlayService extends Service {
 
         colHeader(colR, "World Visuals");
         checkRow(colR, "Vehicles",          stVehicle, on->{ stVehicle=on; sendTcp("vehicle="+(on?1:0)); });
-        checkRow(colR, "Items",             stItems,   on->{ stItems=on;   sendTcp("items="+(on?1:0)); });
-        checkRow(colR, "Throwable Warning", stGrenade, on->{ stGrenade=on; sendTcp("grenadewarn="+(on?1:0)); });
 
         grid.addView(colL); grid.addView(colR);
         contentPanel.addView(grid);

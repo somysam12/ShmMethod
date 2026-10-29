@@ -192,7 +192,7 @@ __int64 hook_renderer(__int64 *a, int b) {
             Cheat::Esp::Line,     Cheat::Esp::Skeleton, Cheat::Esp::Health,
             Cheat::Esp::Name,     Cheat::Esp::Distance,
             g_streamEnemyCount,   g_streamBotCount,
-            "VISION | 4.6",
+            "Vision Loader (v 4.6.0)",
             expiryBuf[0] ? expiryBuf : nullptr,
             g_GrenadeWarning && g_GrenadeNearby);
     }
@@ -284,36 +284,35 @@ static void KC_DrawImGuiWatermark() {
 
     // Watermark + expiry — only when HideESP is OFF
     if (!g_StreamMode) {
-        // "VISION | 4.6" — all red, moved higher up
-        const char* wm1 = "VISION | 4.6";
+        // "Vision Loader (v 4.6.0)" — YELLOW, bottom-right
+        const char* wm1 = "Vision Loader (v 4.6.0)";
         ImVec2 ts1 = vf->CalcTextSizeA(wmSize, FLT_MAX, 0.0f, wm1);
         float wY = (float)glHeight - ts1.y - 60.0f;
         float wX = (float)glWidth  - ts1.x - 60.0f;
-        // Shadow
         dl->AddText(vf, wmSize, ImVec2(wX+1, wY+1), IM_COL32(0,0,0,255), wm1);
-        // Red text
-        dl->AddText(vf, wmSize, ImVec2(wX,   wY),   IM_COL32(255,0,0,255), wm1); // RED
+        dl->AddText(vf, wmSize, ImVec2(wX,   wY),   IM_COL32(255,215,0,255), wm1); // YELLOW
 
-        // Expiry in DD/MM/YY format, RED, just above watermark
+        // Expiry as IST date — CYAN, bottom-left
+        // Format: "Thursday, 29-10-2026 09:55 PM IST"
         if (g_KC_ExpUnix > 0) {
-            time_t et = (time_t)g_KC_ExpUnix;
-            struct tm tmv; char expFmt[32] = {0};
-            if (localtime_r(&et, &tmv))
-                strftime(expFmt, sizeof(expFmt), "%d/%m/%y", &tmv);
+            time_t istTime = (time_t)g_KC_ExpUnix + 19800; // UTC+5:30
+            struct tm tmv; char expFmt[64] = {0};
+            if (gmtime_r(&istTime, &tmv))
+                strftime(expFmt, sizeof(expFmt), "%A, %d-%m-%Y %I:%M %p IST", &tmv);
             if (expFmt[0]) {
                 ImVec2 ets = vf->CalcTextSizeA(vfSize, FLT_MAX, 0.0f, expFmt);
-                float eX = (float)glWidth - ets.x - 60.0f;
-                float eY = (float)glHeight - ets.y - 40.0f;
-                dl->AddText(vf, vfSize, ImVec2(eX+1,eY+1), IM_COL32(0,0,0,255),   expFmt);
-                dl->AddText(vf, vfSize, ImVec2(eX,  eY),   IM_COL32(255,0,0,255), expFmt);
+                float eX = 60.0f;
+                float eY = (float)glHeight - ets.y - 60.0f;
+                dl->AddText(vf, vfSize, ImVec2(eX+1,eY+1), IM_COL32(0,0,0,255),     expFmt);
+                dl->AddText(vf, vfSize, ImVec2(eX,  eY),   IM_COL32(0,255,255,255), expFmt); // CYAN
             }
         } else if (g_KC_ExpUnix == 0) {
             const char* lt = "Lifetime";
             ImVec2 ets = vf->CalcTextSizeA(vfSize, FLT_MAX, 0.0f, lt);
-            float eX = (float)glWidth - ets.x - 60.0f;
-            float eY = (float)glHeight - ets.y - 40.0f;
-            dl->AddText(vf, vfSize, ImVec2(eX+1,eY+1), IM_COL32(0,0,0,255), lt);
-            dl->AddText(vf, vfSize, ImVec2(eX,  eY),   IM_COL32(255,0,0,255), lt);
+            float eX = 60.0f;
+            float eY = (float)glHeight - ets.y - 60.0f;
+            dl->AddText(vf, vfSize, ImVec2(eX+1,eY+1), IM_COL32(0,0,0,255),     lt);
+            dl->AddText(vf, vfSize, ImVec2(eX,  eY),   IM_COL32(0,255,255,255), lt); // CYAN
         }
     }
 
