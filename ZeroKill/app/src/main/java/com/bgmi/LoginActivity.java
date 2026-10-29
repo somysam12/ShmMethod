@@ -422,9 +422,14 @@ public class LoginActivity extends BaseActivity {
     private void startObbCopyFromLogin(String key, String serial) {
         // Use realExternalRoot() to bypass any VirtualApp storage hook
         String realRoot = realExternalRoot();
-        // src: real BGMI OBB directory
-        // dest: matches BEnvironment.getExternalStorageDirectory() nested path
-        java.io.File destDir = new java.io.File(realRoot + "/SdCard/Android/obb/" + PKG_BGMI);
+        // OBB destination: host app's scoped OBB dir (virtualRoot/Android/obb/<pkg>).
+        // VNative redirects BGMI's native /storage/emulated/0/Android/obb/<pkg> to this
+        // location.  SdCard paths are hardcoded-bypassed in IO.cpp so they must NOT be used.
+        android.content.Context hostCtx = MundoCore.getContext();
+        java.io.File _hostObbDir = (hostCtx != null && hostCtx.getObbDir() != null)
+            ? hostCtx.getObbDir()
+            : new java.io.File(realRoot + "/Android/obb/com.visionpro");
+        java.io.File destDir = new java.io.File(_hostObbDir, "scopedStorage/" + PKG_BGMI + "/Android/obb/" + PKG_BGMI);
 
         if (prefs.getBool(KEY_OBB_DONE, false)) {
             java.io.File[] obbFiles = destDir.listFiles((d, n) -> n.endsWith(".obb"));

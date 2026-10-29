@@ -128,13 +128,23 @@ public class VCore {
             rule.put(String.format("/data/misc/profiles/ref/%d/%s", BActivityThread.getUserId(), packageName), profilesRefDir.getAbsolutePath());
 
             if (MundoCore.getContext().getExternalCacheDir() != null && context.getExternalCacheDir() != null) {
-                // SdCard paths bypass native IO (IO.cpp hardcodes /SdCard/ exclusion).
-                // BGMI accesses them directly on the physical filesystem — just pre-create the required directories.
-                File sdCard  = BEnvironment.getExternalStorageDirectory();
+                // Redirect BGMI's standard non-SdCard Android paths to our virtual dirs.
+                // VNative honours these rules; SdCard paths are hardcoded-bypassed in IO.cpp
+                // so we must NOT put OBB there or VNative will never redirect it.
+
+                // OBB: virtualRoot = host app's scoped OBB dir for this guest package
+                File virtualRoot = BEnvironment.getExternalObbDir(packageName);
+                File obbDest     = new File(virtualRoot, "Android/obb/" + packageName);
+                FileUtils.mkdirs(obbDest.getAbsolutePath());
+                // redirect: /storage/emulated/0/Android/obb/<pkg> → virtualRoot/Android/obb/<pkg>
+                rule.put("/storage/emulated/0/Android/obb/" + packageName, obbDest.getAbsolutePath());
+
+                // Data: pre-create dirs and redirect data path (source is non-SdCard → VNative redirects)
                 File dataDir = BEnvironment.getExternalDataDir(packageName);
-                FileUtils.mkdirs(new File(sdCard, "Android/obb/" + packageName));
-                FileUtils.mkdirs(new File(dataDir, "cache"));
-                FileUtils.mkdirs(new File(dataDir, "files"));
+                FileUtils.mkdirs(new File(dataDir, "cache").getAbsolutePath());
+                FileUtils.mkdirs(new File(dataDir, "files").getAbsolutePath());
+                // redirect: /storage/emulated/0/Android/data/<pkg> → SdCard data dir
+                rule.put("/storage/emulated/0/Android/data/" + packageName, dataDir.getAbsolutePath());
             }
             if (MundoCore.get().setHideRoot()) {
                 hideRoot(rule);

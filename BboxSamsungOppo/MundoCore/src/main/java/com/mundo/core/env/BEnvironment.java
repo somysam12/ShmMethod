@@ -134,7 +134,17 @@ public class BEnvironment {
     }
 
     public static File getExternalObbDir(String packageName) {
-        return new File(getExternalStorageDirectory(), "Android/obb/" + packageName);
+        // Return host app's scoped OBB dir as virtualRoot for guest app OBB.
+        // VNative redirects guest app's /storage/emulated/0/Android/obb/<pkg>
+        // to virtualRoot/Android/obb/<pkg>.  SdCard paths are hardcoded-bypassed
+        // in IO.cpp so this must NOT live under SdCard.
+        android.content.Context hostCtx = MundoCore.getContext();
+        File hostObbDir = (hostCtx != null) ? hostCtx.getObbDir() : null;
+        if (hostObbDir == null) {
+            String hostPkg = (hostCtx != null) ? hostCtx.getPackageName() : "com.visionpro";
+            hostObbDir = new File(sExternalVBoxRoot, "Android/obb/" + hostPkg);
+        }
+        return new File(hostObbDir, "scopedStorage/" + packageName);
     }
     
     public static File getProcDir(int pid) {
