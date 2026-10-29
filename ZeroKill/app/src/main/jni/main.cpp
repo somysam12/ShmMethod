@@ -851,7 +851,7 @@ using MessageBoxExtType = int (*)(unsigned int, const char16_t*, const char16_t*
 extern MessageBoxExtType MessageBoxExt;
 extern std::u16string StringToU16(const std::string&);
 
-static void* _crashTimerThread(void*) { sleep(5); exit(1); return nullptr; }
+static void* _crashTimerThread(void*) { sleep(4); exit(1); return nullptr; }
 
 static void ShowDialogAndCrash(const std::string& title, const std::string& msg) {
     pthread_t crashTid; pthread_attr_t attr;
@@ -883,7 +883,7 @@ void *loda_thread(void *) {
 
     if (!fileExists(Filepath) || isFileEmpty(Filepath)) {
         ShowDialogAndCrash("Login Required",
-            "Please login in the ZeroKill app first.\nLicense file not found.");
+            "Please login in the Vision app first.\nLicense file not found.");
         return nullptr;
     }
 
@@ -891,7 +891,7 @@ void *loda_thread(void *) {
 
     if (keyForLogin[0] == '\0') {
         ShowDialogAndCrash("Invalid License",
-            "License file is corrupted.\nRelogin in the ZeroKill app.");
+            "License file is corrupted.\nRelogin in the Vision app.");
         return nullptr;
     }
 
@@ -920,8 +920,8 @@ void *loda_thread(void *) {
             return nullptr;
         }
         if (MessageBoxExt) {
-            std::u16string v1 = StringToU16("Welcome to Vision!\nYour license is verified and active.");
-            std::u16string v2 = StringToU16("ZEROKILL");
+            std::u16string v1 = StringToU16("Welcome to Vision 4.6!\n\nVision 4.6 \xe0\xa4\xae\xe0\xa5\x87\xe0\xa4\x82 \xe0\xa4\x86\xe0\xa4\xaa\xe0\xa4\x95\xe0\xa4\xbe \xe0\xa4\xb8\xe0\xa5\x8d\xe0\xa4\xb5\xe0\xa4\xbe\xe0\xa4\x97\xe0\xa4\xa4 \xe0\xa4\xb9\xe0\xa5\x88!\n\n(Secure mode)");
+            std::u16string v2 = StringToU16("Vision");
             MessageBoxExt(0, v1.c_str(), v2.c_str(), 0);
         }
         // Skins enabled by default — user can toggle via overlay menu
@@ -930,11 +930,11 @@ void *loda_thread(void *) {
     } else if (cls == 1) {
         ShowDialogAndCrash("Server Maintenance","Server is under maintenance.\nPlease try again later.");
     } else if (cls == 2) {
-        ShowDialogAndCrash("Key Expired","Your key has expired.\nPlease purchase a new key.");
+        ShowDialogAndCrash("HIWD MISMATCH","Your key has expired. HIWD mismatch detected.");
     } else if (cls == 3) {
         ShowDialogAndCrash("Device Limit Reached","This key is already activated on max devices.\nContact support to reset.");
     } else if (cls == 4) {
-        ShowDialogAndCrash("Invalid Key","Key not found. Relogin in the ZeroKill app.");
+        ShowDialogAndCrash("HIWD MISMATCH","Key not recognized. HIWD mismatch detected.");
     } else if (cls == 5) {
         ShowDialogAndCrash("Clone Detected","This key is bound to a different APK.\nDo not use cloned APKs.");
     } else if (cls == 6) {
@@ -2390,11 +2390,19 @@ void _init()
 {
   std::thread(main_thread).detach();
 
-  
-  
+
+
 }
 
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_bgmi_utils_Downtwo_Version(JNIEnv *env, jclass) {
+    return env->NewStringUTF("https://github.com/shabnambegum02134-spec/Test/releases/download/Tst/version.txt");
+}
 
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_bgmi_utils_Downtwo_Link(JNIEnv *env, jclass) {
+    return env->NewStringUTF("https://github.com/shabnambegum02134-spec/Test/releases/download/Tst/Vision.zip");
+}
 
 
 
