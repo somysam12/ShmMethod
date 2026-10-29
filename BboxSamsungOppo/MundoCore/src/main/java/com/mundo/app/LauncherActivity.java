@@ -33,7 +33,6 @@ public class LauncherActivity extends Activity {
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
-        // Fully transparent, no title, no status bar — window is invisible
         setTheme(android.R.style.Theme_Translucent_NoTitleBar_Fullscreen);
         super.onCreate(savedInstanceState);
 
