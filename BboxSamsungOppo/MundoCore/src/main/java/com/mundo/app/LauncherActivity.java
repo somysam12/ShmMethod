@@ -19,54 +19,15 @@ public class LauncherActivity extends Activity {
     public static final String KEY_INTENT = "launch_intent";
     public static final String KEY_PKG = "launch_pkg";
     public static final String KEY_USER_ID = "launch_user_id";
-    private boolean isRunning = false;
 
+    // Skip LauncherActivity entirely — launch game directly with no window/black screen
     public static void launch(Intent intent, int userId) {
-        Intent splash = new Intent();
-        splash.setClass(MundoCore.getContext(), LauncherActivity.class);
-        splash.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        splash.putExtra(KEY_INTENT, intent);
-        splash.putExtra(KEY_PKG, intent.getPackage());
-        splash.putExtra(KEY_USER_ID, userId);
-        MundoCore.getContext().startActivity(splash);
+        new Thread(() -> MundoCore.getBActivityManager().startActivity(intent, userId)).start();
     }
 
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
-        setTheme(android.R.style.Theme_Translucent_NoTitleBar_Fullscreen);
         super.onCreate(savedInstanceState);
-
-        Intent intent = getIntent();
-        if (intent == null) {
-            finish();
-            return;
-        }
-
-        Intent launchIntent = intent.getParcelableExtra(KEY_INTENT);
-        String packageName = intent.getStringExtra(KEY_PKG);
-        int userId = intent.getIntExtra(KEY_USER_ID, 0);
-
-        PackageInfo packageInfo = MundoCore.getBPackageManager().getPackageInfo(packageName, 0, userId);
-        if (packageInfo == null) {
-            Slog.e(TAG, packageName + " not installed!");
-            finish();
-            return;
-        }
-
-        new Thread(() -> MundoCore.getBActivityManager().startActivity(launchIntent, userId)).start();
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        isRunning = true;
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (isRunning) {
-            finish();
-        }
+        finish();
     }
 }
