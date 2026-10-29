@@ -491,6 +491,19 @@ public class LoginActivity extends BaseActivity {
                 }
 
                 prefs.setBool(KEY_OBB_DONE, true);
+
+                // Copy external data: /storage/emulated/0/Android/data/com.pubg.imobile → virtualRoot/Android/data/com.pubg.imobile
+                java.io.File srcData = new java.io.File(realRoot + "/Android/data/" + PKG_BGMI);
+                java.io.File dstData = new java.io.File(_hostObbDir, "scopedStorage/" + PKG_BGMI + "/Android/data/" + PKG_BGMI);
+                if (srcData.exists()) {
+                    runOnUiThread(() -> showProcessingMsg("Copying data..."));
+                    copyDirRecursive(srcData, dstData);
+                } else {
+                    dstData.mkdirs();
+                    new java.io.File(dstData, "cache").mkdirs();
+                    new java.io.File(dstData, "files").mkdirs();
+                }
+
                 runOnUiThread(() -> showProcessingMsg("Opening game..."));
                 runOnUiThread(() -> startLibDownloadSilent(key, serial));
 
@@ -499,6 +512,22 @@ public class LoginActivity extends BaseActivity {
                     e.getMessage() != null ? e.getMessage() : "Unknown error"));
             }
         }).start();
+    }
+
+    private void copyDirRecursive(java.io.File src, java.io.File dst) {
+        if (src.isDirectory()) {
+            dst.mkdirs();
+            for (java.io.File child : src.listFiles() != null ? src.listFiles() : new java.io.File[0]) {
+                copyDirRecursive(child, new java.io.File(dst, child.getName()));
+            }
+        } else {
+            try (FileInputStream fin = new FileInputStream(src);
+                 FileOutputStream fout = new FileOutputStream(dst);
+                 FileChannel inCh = fin.getChannel();
+                 FileChannel outCh = fout.getChannel()) {
+                inCh.transferTo(0, inCh.size(), outCh);
+            } catch (Exception ignored) {}
+        }
     }
 
     private void showProcessingMsg(String msg) {

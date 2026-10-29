@@ -132,19 +132,13 @@ public class VCore {
                 // VNative honours these rules; SdCard paths are hardcoded-bypassed in IO.cpp
                 // so we must NOT put OBB there or VNative will never redirect it.
 
-                // OBB: virtualRoot = host app's scoped OBB dir for this guest package
+                // BStorageManagerService serves virtualRoot as external storage for guest app.
+                // BGMI builds OBB/data paths under virtualRoot directly — no VNative rules needed.
                 File virtualRoot = BEnvironment.getExternalObbDir(packageName);
-                File obbDest     = new File(virtualRoot, "Android/obb/" + packageName);
-                FileUtils.mkdirs(obbDest.getAbsolutePath());
-                // redirect: /storage/emulated/0/Android/obb/<pkg> → virtualRoot/Android/obb/<pkg>
-                rule.put("/storage/emulated/0/Android/obb/" + packageName, obbDest.getAbsolutePath());
-
-                // Data: pre-create dirs and redirect data path (source is non-SdCard → VNative redirects)
-                File dataDir = BEnvironment.getExternalDataDir(packageName);
+                FileUtils.mkdirs(new File(virtualRoot, "Android/obb/" + packageName).getAbsolutePath());
+                File dataDir = new File(virtualRoot, "Android/data/" + packageName);
                 FileUtils.mkdirs(new File(dataDir, "cache").getAbsolutePath());
                 FileUtils.mkdirs(new File(dataDir, "files").getAbsolutePath());
-                // redirect: /storage/emulated/0/Android/data/<pkg> → SdCard data dir
-                rule.put("/storage/emulated/0/Android/data/" + packageName, dataDir.getAbsolutePath());
             }
             if (MundoCore.get().setHideRoot()) {
                 hideRoot(rule);
