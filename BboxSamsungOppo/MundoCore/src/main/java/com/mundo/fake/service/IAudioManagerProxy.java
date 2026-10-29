@@ -8,9 +8,9 @@ import java.lang.reflect.Method;
 
 import black.android.media.BRIAudioServiceStub;
 import black.android.os.BRServiceManager;
+import com.mundo.MundoCore;
 import com.mundo.app.BActivityThread;
 import com.mundo.fake.frameworks.BLocationManager;
-import com.mundo.MundoCore;
 import com.mundo.fake.hook.BinderInvocationStub;
 import com.mundo.fake.hook.MethodHook;
 import com.mundo.fake.hook.ProxyMethod;
@@ -111,7 +111,7 @@ public class IAudioManagerProxy extends BinderInvocationStub {
                 AudioManager am = (AudioManager)
                     MundoCore.getContext().getSystemService(Context.AUDIO_SERVICE);
                 if (am != null && am.isBluetoothA2dpOn()) {
-                    return null; // BT headset active — prevent audio rerouting to speaker
+                    return null;
                 }
             }
             MethodParameterUtils.replaceLastAppPkg(args);
