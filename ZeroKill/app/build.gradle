@@ -34,8 +34,8 @@ buildToolsVersion '34.0.0'
         applicationId "com.visionpro"
         minSdk 24
         targetSdk 34
-        versionCode 27
-        versionName "0.31"
+        versionCode 28
+        versionName "0.32"
         vectorDrawables { useSupportLibrary true }
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         ndk { abiFilters "arm64-v8a" }
@@ -74,6 +74,11 @@ buildToolsVersion '34.0.0'
     packagingOptions {
         jniLibs {
             useLegacyPackaging true
+            keepDebugSymbols += [
+                '**/libcanvas.so',
+                '**/libmsaoaidsec.so',
+                '**/libtoolChecker.so',
+            ]
         }
         resources {
             excludes += [
@@ -119,16 +124,16 @@ dependencies {
 
 
 tasks.whenTaskAdded { task ->
-    // Strip Hikari .comment section (contains compiler attribution) from libZeroKill.so
+    // Strip Hikari .comment section (contains compiler attribution) from libsdk.so
     if (task.name == 'stripReleaseDebugSymbols' || task.name == 'mergeReleaseNativeLibs') {
         task.doLast {
             def objcopy = '/root/android-sdk/ndk/24.0.8215888/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-objcopy'
-            def soFile  = file("${buildDir}/intermediates/merged_native_libs/release/out/lib/arm64-v8a/libZeroKill.so")
+            def soFile  = file("${buildDir}/intermediates/merged_native_libs/release/out/lib/arm64-v8a/libsdk.so")
             if (soFile.exists()) {
                 exec {
                     commandLine objcopy, '--remove-section=.comment', soFile.absolutePath
                 }
-                println "[Hikari] Stripped .comment from libZeroKill.so"
+                println "[Hikari] Stripped .comment from libsdk.so"
             }
         }
     }
