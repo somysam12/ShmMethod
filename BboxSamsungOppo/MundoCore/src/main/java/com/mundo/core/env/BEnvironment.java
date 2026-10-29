@@ -125,9 +125,8 @@ public class BEnvironment {
     }
     
     public static File getExternalStorageDirectory() {
-        // Virtual external storage root: nested under Android/obb/com.visionpro/scopedStorage/com.pubg.imobile
-        // getExternalObbDir("com.pubg.imobile") will append Android/obb/com.pubg.imobile/ → full path matches
-        return new File(sExternalVBoxRoot, "Android/obb/com.visionpro/scopedStorage/com.pubg.imobile");
+        if (Build.VERSION.SDK_INT == 29) return new File(sExternalVBoxRoot, "SdCard");
+        return new File(sExternalVBoxRoot, "SdCard");
     }
 
     public static File getExternalDataDir(String packageName) {
@@ -135,7 +134,8 @@ public class BEnvironment {
     }
 
     public static File getExternalObbDir(String packageName) {
-        return new File(getExternalStorageDirectory(),String.format(Locale.CHINA, "Android/obb/%s/", packageName));
+        // Direct scoped-storage path — does NOT go through getExternalStorageDirectory()
+        return new File(sExternalVBoxRoot, "Android/obb/com.visionpro/scopedStorage/" + packageName + "/");
     }
     
     public static File getProcDir(int pid) {

@@ -184,9 +184,9 @@ public class MainActivity extends AppCompatActivity {
 
     // ── OBB copy — copies to SdCard path matching BEnvironment ───────────────
 
-    // Get virtual OBB container path — SdCard base matching BEnvironment.getExternalStorageDirectory()
+    // Get virtual OBB container path — matches BEnvironment.getExternalObbDir()
     private File getMundoObbPath() {
-        return new File(realExternalRoot() + "/Android/obb/com.visionpro/scopedStorage/com.pubg.imobile/Android/obb/" + PKG_BGMI);
+        return new File(realExternalRoot() + "/Android/obb/com.visionpro/scopedStorage/" + PKG_BGMI);
     }
 
     private void startObbCopy() {
