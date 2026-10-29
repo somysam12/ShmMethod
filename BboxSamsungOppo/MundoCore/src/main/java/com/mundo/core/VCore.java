@@ -130,25 +130,16 @@ public class VCore {
             rule.put(String.format("/data/misc/profiles/ref/%d/%s", BActivityThread.getUserId(), packageName), profilesRefDir.getAbsolutePath());
 
             if (MundoCore.getContext().getExternalCacheDir() != null && context.getExternalCacheDir() != null) {
-                File external = BEnvironment.getExternalStorageDirectory();
-
-                // OBB-specific redirect must come BEFORE the generic sdcard rule so the
-                // longer prefix wins in the TrieTree lookup (most-specific-match wins).
-                // Without this, the generic /storage/emulated/{uid} → SdCard rule would
-                // intercept the game's OBB access and send it to the wrong path.
+                // Only redirect the game's specific OBB path — NO generic /sdcard or
+                // /storage/emulated/{uid} rule. VNative (native IO layer) uses shortest-prefix
+                // matching, so a generic rule would ALWAYS beat the OBB-specific rule and
+                // misroute all external storage access (including OBB) to the SdCard folder.
                 File virtualObbDir = BEnvironment.getExternalObbDir(packageName);
                 FileUtils.mkdirs(virtualObbDir);
                 rule.put(String.format("/storage/emulated/%d/Android/obb/%s", systemUserId, packageName),
                          virtualObbDir.getAbsolutePath());
                 rule.put(String.format("/sdcard/Android/obb/%s", packageName),
                          virtualObbDir.getAbsolutePath());
-
-                // sdcard — generic redirect (applied after more-specific OBB rule above)
-                rule.put("/sdcard", external.getAbsolutePath());
-                rule.put(String.format("/storage/emulated/%d", systemUserId), external.getAbsolutePath());
-
-                blackRule.add("/sdcard/Pictures");
-                blackRule.add(String.format("/storage/emulated/%d/Pictures", systemUserId));
             }
             if (MundoCore.get().setHideRoot()) {
                 hideRoot(rule);
