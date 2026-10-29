@@ -3,6 +3,7 @@ package com.mundo.app;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
+import android.graphics.Color;
 import android.os.Bundle;
 
 import androidx.annotation.Nullable;
@@ -19,6 +20,7 @@ public class LauncherActivity extends Activity {
     public static final String KEY_INTENT = "launch_intent";
     public static final String KEY_PKG = "launch_pkg";
     public static final String KEY_USER_ID = "launch_user_id";
+    private boolean isRunning = false;
 
     public static void launch(Intent intent, int userId) {
         Intent splash = new Intent();
@@ -33,6 +35,7 @@ public class LauncherActivity extends Activity {
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getWindow().setBackgroundDrawableResource(android.R.color.black);
 
         Intent intent = getIntent();
         if (intent == null) {
@@ -52,6 +55,19 @@ public class LauncherActivity extends Activity {
         }
 
         new Thread(() -> MundoCore.getBActivityManager().startActivity(launchIntent, userId)).start();
-        finish();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        isRunning = true;
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (isRunning) {
+            finish();
+        }
     }
 }
