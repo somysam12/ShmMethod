@@ -103,69 +103,12 @@ public class SplashActivity extends AppCompatActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
                     != PackageManager.PERMISSION_GRANTED) {
-                showNotificationPermissionScreen();
+                requestPermissions(
+                    new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQ_NOTIF);
                 return;
             }
         }
         goToLogin();
-    }
-
-    private void showNotificationPermissionScreen() {
-        float d = getResources().getDisplayMetrics().density;
-        int p32 = Math.round(32 * d);
-        int p64 = Math.round(64 * d);
-
-        android.widget.LinearLayout root = new android.widget.LinearLayout(this);
-        root.setOrientation(android.widget.LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.parseColor("#0D0D0D"));
-        root.setGravity(android.view.Gravity.CENTER);
-        root.setPadding(p32, p64, p32, p64);
-
-        android.widget.TextView title = new android.widget.TextView(this);
-        title.setText("Permissions required");
-        title.setTextColor(Color.parseColor("#9E9E9E"));
-        title.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 22f);
-        title.setTypeface(null, android.graphics.Typeface.BOLD);
-        title.setGravity(android.view.Gravity.CENTER);
-        android.widget.LinearLayout.LayoutParams titleLp =
-            new android.widget.LinearLayout.LayoutParams(
-                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
-        titleLp.bottomMargin = Math.round(16 * d);
-        title.setLayoutParams(titleLp);
-
-        android.widget.TextView desc = new android.widget.TextView(this);
-        desc.setText("Allow notifications to show the overlay service status.");
-        desc.setTextColor(Color.parseColor("#757575"));
-        desc.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14f);
-        desc.setGravity(android.view.Gravity.CENTER);
-        android.widget.LinearLayout.LayoutParams descLp =
-            new android.widget.LinearLayout.LayoutParams(
-                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
-        descLp.bottomMargin = Math.round(40 * d);
-        desc.setLayoutParams(descLp);
-
-        android.widget.Button btn = new android.widget.Button(this);
-        btn.setText("Allow permission");
-        btn.setTextColor(Color.WHITE);
-        btn.setBackgroundColor(Color.parseColor("#7B5E2A"));
-        android.widget.LinearLayout.LayoutParams btnLp =
-            new android.widget.LinearLayout.LayoutParams(
-                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-                Math.round(52 * d));
-        btn.setLayoutParams(btnLp);
-        btn.setOnClickListener(v -> {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                requestPermissions(
-                    new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQ_NOTIF);
-            }
-        });
-
-        root.addView(title);
-        root.addView(desc);
-        root.addView(btn);
-        setContentView(root);
     }
 
     @Override

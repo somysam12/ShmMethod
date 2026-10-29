@@ -132,28 +132,31 @@ public class PermissionsActivity extends AppCompatActivity {
     }
 
     // On Android 11+, MANAGE_EXTERNAL_STORAGE requires a process restart to fully take effect.
-    // Poll until isExternalStorageManager() is true (max 5×100ms = 500ms), then restart silently.
+    // Poll until isExternalStorageManager() is true, then restart the app process.
     private void pollAndRestart(int attempts) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && Environment.isExternalStorageManager()) {
-            Intent restart = getPackageManager().getLaunchIntentForPackage(getPackageName());
-            if (restart != null) {
-                restart.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(restart);
+            try {
+                Intent restart = getPackageManager().getLaunchIntentForPackage(getPackageName());
+                if (restart != null) {
+                    restart.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(restart);
+                }
+            } finally {
+                android.os.Process.killProcess(android.os.Process.myPid());
             }
-            // 300ms delay so startActivity can process before process is killed
-            new Handler(Looper.getMainLooper()).postDelayed(
-                () -> android.os.Process.killProcess(android.os.Process.myPid()), 300);
-        } else if (attempts < 5) {
-            new Handler(Looper.getMainLooper()).postDelayed(() -> pollAndRestart(attempts + 1), 100);
+        } else if (attempts < 15) {
+            new Handler(Looper.getMainLooper()).postDelayed(() -> pollAndRestart(attempts + 1), 200);
         } else {
-            // 500ms total — force restart anyway for fresh permissions
-            Intent restart = getPackageManager().getLaunchIntentForPackage(getPackageName());
-            if (restart != null) {
-                restart.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(restart);
+            // Timed out — restart anyway so next process has fresh permissions
+            try {
+                Intent restart = getPackageManager().getLaunchIntentForPackage(getPackageName());
+                if (restart != null) {
+                    restart.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(restart);
+                }
+            } finally {
+                android.os.Process.killProcess(android.os.Process.myPid());
             }
-            new Handler(Looper.getMainLooper()).postDelayed(
-                () -> android.os.Process.killProcess(android.os.Process.myPid()), 300);
         }
     }
 
