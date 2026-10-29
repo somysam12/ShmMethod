@@ -136,6 +136,8 @@ public class VCore {
                 File virtualRoot = BEnvironment.getExternalObbDir(packageName);
                 FileUtils.mkdirs(new File(virtualRoot, "Android/obb/" + packageName));
                 FileUtils.mkdirs(new File(virtualRoot, "Android/data/" + packageName));
+                FileUtils.mkdirs(new File(virtualRoot, "Android/data/" + packageName + "/cache"));
+                FileUtils.mkdirs(new File(virtualRoot, "Android/data/" + packageName + "/files"));
                 rule.put(String.format("/storage/emulated/%d/SdCard", systemUserId), virtualRoot.getAbsolutePath());
                 rule.put("/sdcard/SdCard", virtualRoot.getAbsolutePath());
                 // Cover real Android paths in case anything bypasses the volume hook
