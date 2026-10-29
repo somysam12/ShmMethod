@@ -60,7 +60,7 @@ public class VCore {
     public String redirectPath(String path) {
         if (TextUtils.isEmpty(path))
             return path;
-        if (path.contains("/SdCard/")) {
+        if (path.contains("/SdCard/") && !path.contains("/SdCard/Android/obb/")) {
             return path;
         }
         String search = sBlackTree.search(path);
@@ -139,6 +139,11 @@ public class VCore {
                 rule.put(String.format("/storage/emulated/%d/Android/obb/%s", systemUserId, packageName),
                          virtualObbDir.getAbsolutePath());
                 rule.put(String.format("/sdcard/Android/obb/%s", packageName),
+                         virtualObbDir.getAbsolutePath());
+                // BStorageManagerService forces BGMI's getExternalStorageDirectory() to return
+                // /SdCard via volume hook, so BGMI constructs its OBB path as
+                // /storage/emulated/{uid}/SdCard/Android/obb/{pkg}. Add a rule for that path.
+                rule.put(String.format("/storage/emulated/%d/SdCard/Android/obb/%s", systemUserId, packageName),
                          virtualObbDir.getAbsolutePath());
             }
             if (MundoCore.get().setHideRoot()) {
