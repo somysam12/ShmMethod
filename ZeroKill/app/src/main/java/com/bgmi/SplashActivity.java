@@ -103,12 +103,49 @@ public class SplashActivity extends AppCompatActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
                     != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(
-                    new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQ_NOTIF);
+                showNotificationPermissionScreen();
                 return;
             }
         }
         goToLogin();
+    }
+
+    private void showNotificationPermissionScreen() {
+        float d = getResources().getDisplayMetrics().density;
+
+        android.widget.LinearLayout root = new android.widget.LinearLayout(this);
+        root.setOrientation(android.widget.LinearLayout.VERTICAL);
+        root.setBackgroundColor(Color.BLACK);
+        root.setGravity(android.view.Gravity.CENTER);
+        root.setPadding(Math.round(40 * d), 0, Math.round(40 * d), 0);
+
+        android.widget.TextView title = new android.widget.TextView(this);
+        title.setText("Permissions required");
+        title.setTextColor(Color.parseColor("#CCCCCC"));
+        title.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 22f);
+        title.setGravity(android.view.Gravity.CENTER);
+        android.widget.LinearLayout.LayoutParams titleLp =
+            new android.widget.LinearLayout.LayoutParams(
+                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
+                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
+        titleLp.bottomMargin = Math.round(12 * d);
+        title.setLayoutParams(titleLp);
+
+        android.widget.TextView desc = new android.widget.TextView(this);
+        desc.setText("Allow notifications to show the overlay service status.");
+        desc.setTextColor(Color.parseColor("#888888"));
+        desc.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14f);
+        desc.setGravity(android.view.Gravity.CENTER);
+        desc.setLineSpacing(0f, 1.3f);
+
+        root.addView(title);
+        root.addView(desc);
+        setContentView(root);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            requestPermissions(
+                new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQ_NOTIF);
+        }
     }
 
     @Override
