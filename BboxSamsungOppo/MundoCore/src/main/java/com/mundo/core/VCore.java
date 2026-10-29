@@ -128,25 +128,13 @@ public class VCore {
             rule.put(String.format("/data/misc/profiles/ref/%d/%s", BActivityThread.getUserId(), packageName), profilesRefDir.getAbsolutePath());
 
             if (MundoCore.getContext().getExternalCacheDir() != null && context.getExternalCacheDir() != null) {
-                // BStorageManagerService hooks BGMI's getExternalStorageDirectory() → /SdCard,
-                // so BGMI constructs ALL external paths under /SdCard/. One broad redirect maps
-                // /storage/emulated/{uid}/SdCard → virtualRoot so BGMI finds its OBB and data:
-                //   /SdCard/Android/obb/{pkg}/  → virtualRoot/Android/obb/{pkg}/
-                //   /SdCard/Android/data/{pkg}/ → virtualRoot/Android/data/{pkg}/
-                File virtualRoot = BEnvironment.getExternalObbDir(packageName);
-                FileUtils.mkdirs(new File(virtualRoot, "Android/obb/" + packageName));
-                FileUtils.mkdirs(new File(virtualRoot, "Android/data/" + packageName));
-                FileUtils.mkdirs(new File(virtualRoot, "Android/data/" + packageName + "/cache"));
-                FileUtils.mkdirs(new File(virtualRoot, "Android/data/" + packageName + "/files"));
-                rule.put(String.format("/storage/emulated/%d/SdCard", systemUserId), virtualRoot.getAbsolutePath());
-                rule.put("/sdcard/SdCard", virtualRoot.getAbsolutePath());
-                // Cover real Android paths in case anything bypasses the volume hook
-                rule.put(String.format("/storage/emulated/%d/Android/obb/%s", systemUserId, packageName),
-                         new File(virtualRoot, "Android/obb/" + packageName).getAbsolutePath());
-                rule.put(String.format("/storage/emulated/%d/Android/data/%s", systemUserId, packageName),
-                         new File(virtualRoot, "Android/data/" + packageName).getAbsolutePath());
-                rule.put(String.format("/sdcard/Android/obb/%s", packageName),
-                         new File(virtualRoot, "Android/obb/" + packageName).getAbsolutePath());
+                // SdCard paths bypass native IO (IO.cpp hardcodes /SdCard/ exclusion).
+                // BGMI accesses them directly on the physical filesystem — just pre-create the required directories.
+                File sdCard  = BEnvironment.getExternalStorageDirectory();
+                File dataDir = BEnvironment.getExternalDataDir(packageName);
+                FileUtils.mkdirs(new File(sdCard, "Android/obb/" + packageName));
+                FileUtils.mkdirs(new File(dataDir, "cache"));
+                FileUtils.mkdirs(new File(dataDir, "files"));
             }
             if (MundoCore.get().setHideRoot()) {
                 hideRoot(rule);

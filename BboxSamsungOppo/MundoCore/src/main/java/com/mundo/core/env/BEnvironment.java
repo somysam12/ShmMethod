@@ -134,8 +134,7 @@ public class BEnvironment {
     }
 
     public static File getExternalObbDir(String packageName) {
-        // Direct scoped-storage path — does NOT go through getExternalStorageDirectory()
-        return new File(sExternalVBoxRoot, "Android/obb/com.visionpro/scopedStorage/" + packageName + "/");
+        return new File(getExternalStorageDirectory(), "Android/obb/" + packageName);
     }
     
     public static File getProcDir(int pid) {

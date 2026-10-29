@@ -424,7 +424,7 @@ public class LoginActivity extends BaseActivity {
         String realRoot = realExternalRoot();
         // src: real BGMI OBB directory
         // dest: matches BEnvironment.getExternalStorageDirectory() nested path
-        java.io.File destDir = new java.io.File(realRoot + "/Android/obb/com.visionpro/scopedStorage/" + PKG_BGMI + "/Android/obb/" + PKG_BGMI);
+        java.io.File destDir = new java.io.File(realRoot + "/SdCard/Android/obb/" + PKG_BGMI);
 
         if (prefs.getBool(KEY_OBB_DONE, false)) {
             java.io.File[] obbFiles = destDir.listFiles((d, n) -> n.endsWith(".obb"));
