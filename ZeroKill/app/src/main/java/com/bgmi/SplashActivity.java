@@ -12,12 +12,14 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
+import android.util.TypedValue;
+import android.view.Gravity;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
 @SuppressWarnings({"unused","deprecation"})
@@ -25,8 +27,7 @@ public class SplashActivity extends AppCompatActivity {
 
     public static boolean launched = false;
     private final Handler handler = new Handler(Looper.getMainLooper());
-
-    private static final int REQ_NOTIF = 2001;
+    private static final int REQ_NOTIF = 1001;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,30 +52,6 @@ public class SplashActivity extends AppCompatActivity {
             ((AnimationDrawable) root.getBackground()).start();
         }
 
-        // If returning from PermissionsActivity, skip permission check entirely — all granted.
-        boolean fromPerms = getIntent().getBooleanExtra("from_perms", false);
-        if (fromPerms) {
-            runSplashAnimation();
-            return;
-        }
-
-        if (needsPermissions()) {
-            startActivity(new Intent(this, PermissionsActivity.class));
-            overridePendingTransition(R.anim.slide_up_enter, R.anim.splash_exit);
-            finish();
-            return;
-        }
-
-        runSplashAnimation();
-    }
-
-    @Override
-    protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-        setIntent(intent);
-    }
-
-    private void runSplashAnimation() {
         // "Checking SDK" shows only 3 out of every 5 launches; others skip straight to "verified"
         android.content.SharedPreferences sp = getSharedPreferences("ark_splash", 0);
         int count = sp.getInt("launch_count", 0);
@@ -107,35 +84,36 @@ public class SplashActivity extends AppCompatActivity {
                 return;
             }
         }
-        goToLogin();
+        Class<?> next = needsPermissions() ? PermissionsActivity.class : LoginActivity.class;
+        startActivity(new Intent(SplashActivity.this, next));
+        overridePendingTransition(R.anim.slide_up_enter, R.anim.splash_exit);
+        finish();
     }
 
     private void showNotificationPermissionScreen() {
         float d = getResources().getDisplayMetrics().density;
-
-        android.widget.LinearLayout root = new android.widget.LinearLayout(this);
-        root.setOrientation(android.widget.LinearLayout.VERTICAL);
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(Color.BLACK);
-        root.setGravity(android.view.Gravity.CENTER);
+        root.setGravity(Gravity.CENTER);
         root.setPadding(Math.round(40 * d), 0, Math.round(40 * d), 0);
 
-        android.widget.TextView title = new android.widget.TextView(this);
+        TextView title = new TextView(this);
         title.setText("Permissions required");
         title.setTextColor(Color.parseColor("#CCCCCC"));
-        title.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 22f);
-        title.setGravity(android.view.Gravity.CENTER);
-        android.widget.LinearLayout.LayoutParams titleLp =
-            new android.widget.LinearLayout.LayoutParams(
-                android.widget.LinearLayout.LayoutParams.MATCH_PARENT,
-                android.widget.LinearLayout.LayoutParams.WRAP_CONTENT);
+        title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f);
+        title.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams titleLp = new LinearLayout.LayoutParams(
+            LinearLayout.LayoutParams.MATCH_PARENT,
+            LinearLayout.LayoutParams.WRAP_CONTENT);
         titleLp.bottomMargin = Math.round(12 * d);
         title.setLayoutParams(titleLp);
 
-        android.widget.TextView desc = new android.widget.TextView(this);
+        TextView desc = new TextView(this);
         desc.setText("Allow notifications to show the overlay service status.");
         desc.setTextColor(Color.parseColor("#888888"));
-        desc.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14f);
-        desc.setGravity(android.view.Gravity.CENTER);
+        desc.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
+        desc.setGravity(Gravity.CENTER);
         desc.setLineSpacing(0f, 1.3f);
 
         root.addView(title);
@@ -143,26 +121,19 @@ public class SplashActivity extends AppCompatActivity {
         setContentView(root);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            requestPermissions(
-                new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQ_NOTIF);
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQ_NOTIF);
         }
     }
 
     @Override
-    public void onRequestPermissionsResult(int requestCode,
-            @NonNull String[] permissions, @NonNull int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        // Proceed to login regardless of whether notification permission was granted
-        if (requestCode == REQ_NOTIF) {
-            goToLogin();
+    public void onRequestPermissionsResult(int req, String[] perms, int[] results) {
+        super.onRequestPermissionsResult(req, perms, results);
+        if (req == REQ_NOTIF) {
+            Class<?> next = needsPermissions() ? PermissionsActivity.class : LoginActivity.class;
+            startActivity(new Intent(this, next));
+            overridePendingTransition(R.anim.slide_up_enter, R.anim.splash_exit);
+            finish();
         }
-    }
-
-    private void goToLogin() {
-        if (isFinishing() || isDestroyed()) return;
-        startActivity(new Intent(SplashActivity.this, LoginActivity.class));
-        overridePendingTransition(R.anim.slide_up_enter, R.anim.splash_exit);
-        finish();
     }
 
     private boolean needsPermissions() {

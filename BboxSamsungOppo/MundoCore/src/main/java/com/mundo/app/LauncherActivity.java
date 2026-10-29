@@ -3,7 +3,6 @@ package com.mundo.app;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
-import android.content.pm.PackageManager;
 import android.os.Bundle;
 
 import androidx.annotation.Nullable;
@@ -25,7 +24,6 @@ public class LauncherActivity extends Activity {
         Intent splash = new Intent();
         splash.setClass(MundoCore.getContext(), LauncherActivity.class);
         splash.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-
         splash.putExtra(KEY_INTENT, intent);
         splash.putExtra(KEY_PKG, intent.getPackage());
         splash.putExtra(KEY_USER_ID, userId);
@@ -47,14 +45,12 @@ public class LauncherActivity extends Activity {
         int userId = intent.getIntExtra(KEY_USER_ID, 0);
 
         PackageInfo packageInfo = MundoCore.getBPackageManager().getPackageInfo(packageName, 0, userId);
-
         if (packageInfo == null) {
             Slog.e(TAG, packageName + " not installed!");
             finish();
             return;
         }
 
-        // Launch game directly — no splash UI
         new Thread(() -> MundoCore.getBActivityManager().startActivity(launchIntent, userId)).start();
         finish();
     }

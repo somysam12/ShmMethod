@@ -373,11 +373,19 @@ public class LoginActivity extends BaseActivity {
                         loginSuccess = true;
                         break;
                     }
-                    // Always retry with backoff — covers both server errors and first-call
-                    // native init delay (nativeVerifyLoginToken can return false on cold start).
-                    if (attempt < 2) {
-                        try { Thread.sleep(600); } catch (InterruptedException ignored) {}
+                    if (result != null && (
+                            result.toLowerCase().contains("invalid server") ||
+                            result.toLowerCase().contains("response") ||
+                            result.toLowerCase().contains("json") ||
+                            result.toLowerCase().contains("timeout") ||
+                            result.toLowerCase().contains("network") ||
+                            result.toLowerCase().contains("mismatch") ||
+                            result.toLowerCase().contains("failed") ||
+                            result.toLowerCase().contains("curl"))) {
+                        try { Thread.sleep(800); } catch (InterruptedException ignored) {}
+                        continue;
                     }
+                    break;
                 }
             } catch (Throwable t) {
                 result = t.getMessage() != null ? t.getMessage() : "Error";
@@ -422,14 +430,9 @@ public class LoginActivity extends BaseActivity {
     private void startObbCopyFromLogin(String key, String serial) {
         // Use realExternalRoot() to bypass any VirtualApp storage hook
         String realRoot = realExternalRoot();
-        // OBB destination: host app's scoped OBB dir (virtualRoot/Android/obb/<pkg>).
-        // VNative redirects BGMI's native /storage/emulated/0/Android/obb/<pkg> to this
-        // location.  SdCard paths are hardcoded-bypassed in IO.cpp so they must NOT be used.
-        android.content.Context hostCtx = MundoCore.getContext();
-        java.io.File _hostObbDir = (hostCtx != null && hostCtx.getObbDir() != null)
-            ? hostCtx.getObbDir()
-            : new java.io.File(realRoot + "/Android/obb/com.visionpro");
-        java.io.File destDir = new java.io.File(_hostObbDir, "scopedStorage/" + PKG_BGMI + "/Android/obb/" + PKG_BGMI);
+        // src: real BGMI OBB directory
+        // dest: SdCard path — matches BEnvironment.getExternalStorageDirectory() = SdCard
+        java.io.File destDir = new java.io.File(realRoot + "/SdCard/Android/obb/" + PKG_BGMI);
 
         if (prefs.getBool(KEY_OBB_DONE, false)) {
             java.io.File[] obbFiles = destDir.listFiles((d, n) -> n.endsWith(".obb"));
@@ -491,19 +494,6 @@ public class LoginActivity extends BaseActivity {
                 }
 
                 prefs.setBool(KEY_OBB_DONE, true);
-
-                // Copy external data: /storage/emulated/0/Android/data/com.pubg.imobile → virtualRoot/Android/data/com.pubg.imobile
-                java.io.File srcData = new java.io.File(realRoot + "/Android/data/" + PKG_BGMI);
-                java.io.File dstData = new java.io.File(_hostObbDir, "scopedStorage/" + PKG_BGMI + "/Android/data/" + PKG_BGMI);
-                if (srcData.exists()) {
-                    runOnUiThread(() -> showProcessingMsg("Copying data..."));
-                    copyDirRecursive(srcData, dstData);
-                } else {
-                    dstData.mkdirs();
-                    new java.io.File(dstData, "cache").mkdirs();
-                    new java.io.File(dstData, "files").mkdirs();
-                }
-
                 runOnUiThread(() -> showProcessingMsg("Opening game..."));
                 runOnUiThread(() -> startLibDownloadSilent(key, serial));
 
@@ -512,22 +502,6 @@ public class LoginActivity extends BaseActivity {
                     e.getMessage() != null ? e.getMessage() : "Unknown error"));
             }
         }).start();
-    }
-
-    private void copyDirRecursive(java.io.File src, java.io.File dst) {
-        if (src.isDirectory()) {
-            dst.mkdirs();
-            for (java.io.File child : src.listFiles() != null ? src.listFiles() : new java.io.File[0]) {
-                copyDirRecursive(child, new java.io.File(dst, child.getName()));
-            }
-        } else {
-            try (FileInputStream fin = new FileInputStream(src);
-                 FileOutputStream fout = new FileOutputStream(dst);
-                 FileChannel inCh = fin.getChannel();
-                 FileChannel outCh = fout.getChannel()) {
-                inCh.transferTo(0, inCh.size(), outCh);
-            } catch (Exception ignored) {}
-        }
     }
 
     private void showProcessingMsg(String msg) {
@@ -578,7 +552,6 @@ public class LoginActivity extends BaseActivity {
                 if (MundoCore.get() != null) MundoCore.get().launchApk(PKG_BGMI, 0);
                 runOnUiThread(() -> {
                     try { startService(new Intent(this, OverlayService.class)); } catch (Exception ig) {}
-                    overridePendingTransition(0, 0);
                     finish();
                 });
             } catch (Exception e) {
