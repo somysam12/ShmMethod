@@ -29,14 +29,11 @@ public class ArkApplication extends Application {
             try { HiddenApiBypass.addHiddenApiExemptions("L"); }
             catch (Throwable t) { Log.w(TAG, "HiddenApiBypass: " + t.getMessage()); }
         }
-        try { DexDecryptor.install(base); }
-        catch (Throwable e) { Log.e(TAG, "Dex: " + e.getMessage()); }
         super.attachBaseContext(base);
         try {
             MundoCore.get().doAttachBaseContext(base, new ClientConfiguration() {
                 @Override public String getHostPackageName() { return base.getPackageName(); }
                 @Override public boolean isEnableDaemonService() { return false; }
-                @Override public boolean isEnableLauncherActivity() { return false; }
                 @Override public boolean requestInstallPackage(File file) { return false; }
             });
         } catch (Exception e) { Log.e(TAG, "attachBaseContext: " + e.getMessage()); }
