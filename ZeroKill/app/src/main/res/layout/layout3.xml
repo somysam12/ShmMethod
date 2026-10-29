@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout android:orientation="vertical" android:id="@+id/layout3" android:visibility="visible" android:layout_width="fill_parent" android:layout_height="wrap_content" android:paddingHorizontal="10.0dip"
+  xmlns:android="http://schemas.android.com/apk/res/android">
+    <LinearLayout android:orientation="vertical" android:layout_width="fill_parent" android:layout_height="wrap_content">
+        <TextView android:textSize="11.0sp" android:textStyle="bold" android:textColor="#ff8e2de2" android:gravity="center" android:background="@drawable/radius_button" android:layout_width="fill_parent" android:layout_height="wrap_content" android:layout_marginTop="8.0dip" android:text="STABILITY FEATURES" android:letterSpacing="0.1" android:paddingVertical="4.0dip" />
+    </LinearLayout>
+    <LinearLayout android:orientation="horizontal" android:layout_width="fill_parent" android:layout_height="wrap_content">
+        <LinearLayout android:orientation="vertical" android:layout_width="0.0dip" android:layout_height="wrap_content" android:layout_weight="1.0">
+            <CheckBox android:textColor="@color/white" android:id="@+id/TimeLimit" android:padding="5.0dip" android:layout_width="fill_parent" android:layout_height="wrap_content" android:button="@drawable/custom_checkbox" android:text="6H Time Fixer" android:fontFamily="@font/font" />
+            <CheckBox android:textColor="@color/white" android:id="@+id/isSmallCrosshair" android:padding="5.0dip" android:visibility="gone" android:layout_width="fill_parent" android:layout_height="wrap_content" android:button="@drawable/custom_checkbox" android:text="Small Crosshair" android:fontFamily="@font/font" />
+            <CheckBox android:textColor="@color/white" android:id="@+id/isFastFire" android:padding="5.0dip" android:visibility="gone" android:layout_width="fill_parent" android:layout_height="wrap_content" android:button="@drawable/custom_checkbox" android:text="Fast Fire" android:fontFamily="@font/font" />
+        </LinearLayout>
+        <LinearLayout android:orientation="vertical" android:layout_width="0.0dip" android:layout_height="wrap_content" android:layout_weight="1.0">
+            <CheckBox android:textColor="@color/white" android:id="@+id/is120Fps" android:padding="5.0dip" android:layout_width="fill_parent" android:layout_height="wrap_content" android:button="@drawable/custom_checkbox" android:text="120 FPS" android:fontFamily="@font/font" />
+            <CheckBox android:textColor="@color/white" android:id="@+id/isLessRecoil" android:padding="5.0dip" android:visibility="gone" android:layout_width="fill_parent" android:layout_height="wrap_content" android:button="@drawable/custom_checkbox" android:text="Less Recoil" android:fontFamily="@font/font" />
+            <CheckBox android:textColor="@color/white" android:id="@+id/isInstantHit" android:padding="5.0dip" android:visibility="gone" android:layout_width="fill_parent" android:layout_height="wrap_content" android:button="@drawable/custom_checkbox" android:text="Instant Hit" android:fontFamily="@font/font" />
+        </LinearLayout>
+    </LinearLayout>
+    <LinearLayout android:orientation="horizontal" android:layout_width="fill_parent" android:layout_height="wrap_content">
+        <CheckBox android:textColor="@color/white" android:id="@+id/isIpadView" android:visibility="visible" android:layout_width="wrap_content" android:layout_height="wrap_content" android:button="@drawable/custom_checkbox" android:text="IPad View" android:fontFamily="@font/font" android:paddingStart="5.0dip" android:paddingVertical="5.0dip" />
+        <LinearLayout android:orientation="horizontal" android:id="@+id/tpphideunhide" android:layout_width="wrap_content" android:layout_height="fill_parent">
+            <TextView android:textColor="@color/white" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="(" android:fontFamily="@font/font" android:paddingStart="3.0dip" android:paddingVertical="5.0dip" />
+            <TextView android:textColor="@color/white" android:id="@+id/textIpadViewRange" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="120" android:fontFamily="@font/font" android:paddingVertical="5.0dip" />
+            <TextView android:textColor="@color/white" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text=")" android:fontFamily="@font/font" android:paddingVertical="5.0dip" />
+        </LinearLayout>
+    </LinearLayout>
+    <SeekBar android:id="@+id/isIpadViewRange" android:layout_width="fill_parent" android:layout_height="wrap_content" android:layout_marginTop="5.0dip" android:maxHeight="6.0dip" android:max="130" android:progress="120" android:progressDrawable="@drawable/background_fill" android:thumb="@drawable/thumb" android:min="90" />
+    <CheckBox android:textColor="@color/white" android:id="@+id/menuHideRecording" android:padding="5.0dip" android:layout_width="fill_parent" android:layout_height="wrap_content" android:button="@drawable/custom_checkbox" android:text="Hide Recording" android:fontFamily="@font/font" />
+</LinearLayout>

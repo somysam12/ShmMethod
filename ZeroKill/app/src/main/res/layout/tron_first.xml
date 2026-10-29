@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/splashRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/animated_logo_bg">
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#99000000" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="32dp"
+        android:fitsSystemWindows="true">
+
+        <ImageView
+            android:id="@+id/img1"
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:src="@drawable/logopng"
+            android:scaleType="fitCenter"
+            android:contentDescription="@string/app_name" />
+
+        <ProgressBar
+            android:id="@+id/splashProgress"
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:layout_marginTop="32dp"
+            android:indeterminateTint="#ffffffff" />
+
+        <TextView
+            android:id="@+id/tv_app_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="Checking SDK server..."
+            android:textSize="18sp"
+            android:textColor="#ffffffff"
+            android:gravity="center"
+            android:fontFamily="@font/font" />
+
+        <Button
+            android:id="@+id/splashRetry"
+            android:layout_width="200dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="24dp"
+            android:minHeight="48dp"
+            android:text="Retry"
+            android:textColor="#ffffffff"
+            android:textAllCaps="false"
+            android:fontFamily="@font/font"
+            android:backgroundTint="#ffd5630d"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+</FrameLayout>

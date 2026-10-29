@@ -101,9 +101,6 @@ buildToolsVersion '34.0.0'
             ]
         }
     }
-    externalNativeBuild {
-        ndkBuild { path file('src/main/jni/Android.mk') }
-    }
     ndkVersion "24.0.8215888"
 }
 

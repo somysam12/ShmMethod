@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<animation-list android:oneshot="false" android:enterFadeDuration="3000" android:exitFadeDuration="3000"
+  xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:duration="3000" android:drawable="@drawable/gradient_step_1" />
+    <item android:duration="3000" android:drawable="@drawable/gradient_step_2" />
+    <item android:duration="3000" android:drawable="@drawable/gradient_step_3" />
+    <item android:duration="3000" android:drawable="@drawable/gradient_step_4" />
+    <item android:duration="3000" android:drawable="@drawable/gradient_step_5" />
+    <item android:duration="3000" android:drawable="@drawable/gradient_step_6" />
+</animation-list>

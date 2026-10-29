@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout android:layout_width="fill_parent" android:layout_height="fill_parent"
+  xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
+    <ImageView android:id="@+id/mLogo" android:padding="10.0dip" android:layout_width="50.0dip" android:layout_height="50.0dip" android:src="@drawable/logopng" android:scaleType="fitCenter" />
+    <LinearLayout android:orientation="horizontal" android:id="@+id/mMenu" android:background="#ff000000" android:padding="2.0dip" android:visibility="gone" android:layout_width="460.0dip" android:layout_height="300.0dip">
+        <LinearLayout android:gravity="center_horizontal" android:orientation="vertical" android:background="@drawable/bg_radius" android:layout_width="120.0dip" android:layout_height="fill_parent" android:layout_margin="8.0dip" android:paddingHorizontal="8.0dip">
+            <ImageView android:id="@+id/logoImage" android:paddingBottom="0.0dip" android:layout_width="60.0dip" android:layout_height="55.0dip" android:layout_marginTop="16.0dip" android:layout_marginBottom="24.0dip" android:src="@drawable/logopng" />
+            <LinearLayout android:gravity="center_vertical" android:orientation="horizontal" android:id="@+id/button1" android:background="@drawable/button_on" android:focusable="true" android:clickable="true" android:layout_width="fill_parent" android:layout_height="36.0dip" android:layout_marginBottom="8.0dip" android:paddingHorizontal="12.0dip">
+                <ImageView android:id="@+id/buttonimg1" android:background="@drawable/icon_background_on" android:padding="3.0dip" android:layout_width="18.0dip" android:layout_height="18.0dip" android:src="@drawable/esp" android:scaleType="fitCenter" app:tint="@color/white" />
+                <TextView android:textSize="9.0sp" android:textStyle="bold" android:textColor="@color/white" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="VISUALS" android:layout_marginStart="10.0dip" android:letterSpacing="0.1" />
+            </LinearLayout>
+            <LinearLayout android:gravity="center_vertical" android:orientation="horizontal" android:id="@+id/button2" android:background="@drawable/button_off" android:focusable="true" android:clickable="true" android:layout_width="fill_parent" android:layout_height="36.0dip" android:layout_marginBottom="8.0dip" android:paddingHorizontal="12.0dip">
+                <ImageView android:id="@+id/buttonimg2" android:background="@drawable/icon_background_off" android:padding="3.0dip" android:layout_width="18.0dip" android:layout_height="18.0dip" android:src="@drawable/aimbot" android:scaleType="fitCenter" app:tint="@color/white" />
+                <TextView android:textSize="9.0sp" android:textStyle="bold" android:textColor="@color/white" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="COMBAT" android:layout_marginStart="10.0dip" android:letterSpacing="0.1" />
+            </LinearLayout>
+            <LinearLayout android:gravity="center_vertical" android:orientation="horizontal" android:id="@+id/button3" android:background="@drawable/button_off" android:focusable="true" android:clickable="true" android:layout_width="fill_parent" android:layout_height="36.0dip" android:paddingHorizontal="12.0dip">
+                <ImageView android:id="@+id/buttonimg3" android:background="@drawable/icon_background_off" android:padding="3.0dip" android:layout_width="18.0dip" android:layout_height="18.0dip" android:src="@drawable/security" android:scaleType="fitCenter" app:tint="@color/white" />
+                <TextView android:textSize="9.0sp" android:textStyle="bold" android:textColor="@color/white" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="MISC" android:layout_marginStart="10.0dip" android:letterSpacing="0.1" />
+            </LinearLayout>
+            <LinearLayout android:gravity="center_vertical" android:orientation="horizontal" android:id="@+id/virtualDeviceIdTab" android:background="@drawable/button_off" android:focusable="true" android:clickable="true" android:layout_width="fill_parent" android:layout_height="36.0dip" android:layout_marginTop="8.0dip" android:paddingHorizontal="12.0dip">
+                <ImageView android:background="@drawable/icon_background_off" android:padding="3.0dip" android:layout_width="18.0dip" android:layout_height="18.0dip" android:src="@drawable/security" app:tint="@color/white" />
+                <TextView android:textSize="9.0sp" android:textStyle="bold" android:textColor="@color/white" android:layout_width="0.0dip" android:layout_height="wrap_content" android:text="DEVICE ID" android:maxLines="1" android:layout_weight="1.0" android:layout_marginStart="6.0dip" android:letterSpacing="0.0" android:autoSizeTextType="uniform" android:autoSizeStepGranularity="1.0sp" android:autoSizeMinTextSize="7.0sp" android:autoSizeMaxTextSize="9.0sp" />
+            </LinearLayout>
+            <LinearLayout android:gravity="center_vertical" android:orientation="horizontal" android:id="@+id/button4" android:background="@drawable/button_off" android:focusable="true" android:visibility="gone" android:clickable="true" android:layout_width="fill_parent" android:layout_height="36.0dip" android:layout_marginTop="8.0dip" android:paddingHorizontal="12.0dip">
+                <ImageView android:id="@+id/buttonimg4" android:background="@drawable/icon_background_off" android:padding="3.0dip" android:layout_width="18.0dip" android:layout_height="18.0dip" android:src="@drawable/skins" android:scaleType="fitCenter" app:tint="@color/white" />
+                <TextView android:textSize="9.0sp" android:textStyle="bold" android:textColor="@color/white" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="SKINS" android:layout_marginStart="10.0dip" android:letterSpacing="0.1" />
+            </LinearLayout>
+        </LinearLayout>
+        <LinearLayout android:orientation="vertical" android:background="@drawable/bg_radius" android:layout_width="fill_parent" android:layout_height="fill_parent" android:layout_marginTop="8.0dip" android:layout_marginBottom="8.0dip" android:layout_marginEnd="8.0dip">
+            <RelativeLayout android:layout_width="fill_parent" android:layout_height="45.0dip" android:paddingHorizontal="16.0dip">
+                <TextView android:textSize="12.0sp" android:textStyle="bold" android:textColor="#ffffffff" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="VISION ELITE" android:layout_centerVertical="true" android:letterSpacing="0.2" />
+                <LinearLayout android:gravity="center" android:id="@+id/close" android:background="@drawable/icon_background_on" android:layout_width="32.0dip" android:layout_height="32.0dip" android:layout_centerVertical="true" android:layout_alignParentEnd="true">
+                    <ImageView android:layout_width="14.0dip" android:layout_height="14.0dip" android:src="@drawable/close" android:scaleType="fitCenter" app:tint="#ffffffff" />
+                </LinearLayout>
+            </RelativeLayout>
+            <View android:background="#1affffff" android:layout_width="fill_parent" android:layout_height="1.0dip" android:layout_marginHorizontal="16.0dip" />
+            <ScrollView android:padding="12.0dip" android:scrollbars="none" android:layout_width="fill_parent" android:layout_height="fill_parent">
+                <LinearLayout android:orientation="vertical" android:layout_width="fill_parent" android:layout_height="wrap_content">
+                    <include layout="@layout/layout1" />
+                    <include layout="@layout/layout2" />
+                    <include layout="@layout/layout3" />
+                    <include layout="@layout/virtual_device_id" />
+                    <include layout="@layout/layout4" />
+                </LinearLayout>
+            </ScrollView>
+        </LinearLayout>
+    </LinearLayout>
+</FrameLayout>

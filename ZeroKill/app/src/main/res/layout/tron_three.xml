@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/main_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/animated_logo_bg">
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#99000000" />
+
+    <!-- Header area with logo -->
+    <RelativeLayout
+        android:id="@+id/header_area"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@+id/login_card">
+
+        <ImageView
+            android:id="@+id/main_logo"
+            android:layout_width="100dp"
+            android:layout_height="100dp"
+            android:src="@drawable/logopng"
+            android:scaleType="fitCenter"
+            android:layout_centerInParent="true" />
+
+        <!-- appNameText (hidden — used by setAppNameFont) -->
+        <TextView
+            android:id="@+id/appNameText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Vision"
+            android:textSize="20sp"
+            android:textColor="#ffffffff"
+            android:layout_below="@id/main_logo"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="8dp"
+            android:fontFamily="@font/bold"
+            android:visibility="gone" />
+
+    </RelativeLayout>
+
+    <!-- Bottom dark card -->
+    <LinearLayout
+        android:id="@+id/login_card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/dark_content_card"
+        android:padding="48dp"
+        android:layout_alignParentBottom="true">
+
+        <!-- System Initializing title -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginBottom="40dp"
+            android:text="System Initializing..."
+            android:textSize="15sp"
+            android:textColor="#ffffffff"
+            android:fontFamily="sans-serif-medium" />
+
+        <!-- Expiry info (hidden but keeps IDs) -->
+        <TextView
+            android:id="@+id/expiryDateTv"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:text=""
+            android:textSize="11sp"
+            android:textColor="#80ffffff"
+            android:fontFamily="@font/font"
+            android:visibility="gone" />
+
+        <!-- Countdown timer (hidden, kept for logic) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:visibility="gone">
+
+            <TextView android:id="@+id/tvD" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="00" android:textSize="28sp" android:textColor="#ffffffff" android:fontFamily="@font/bold" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text=":" android:textSize="28sp" android:textColor="#ffffffff" android:paddingHorizontal="4dp" />
+            <TextView android:id="@+id/tvH" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="00" android:textSize="28sp" android:textColor="#ffffffff" android:fontFamily="@font/bold" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text=":" android:textSize="28sp" android:textColor="#ffffffff" android:paddingHorizontal="4dp" />
+            <TextView android:id="@+id/tvM" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="00" android:textSize="28sp" android:textColor="#ffffffff" android:fontFamily="@font/bold" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text=":" android:textSize="28sp" android:textColor="#ffffffff" android:paddingHorizontal="4dp" />
+            <TextView android:id="@+id/tvS" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="00" android:textSize="28sp" android:textColor="#ffffffff" android:fontFamily="@font/bold" />
+
+        </LinearLayout>
+
+        <!-- Status container (processing state) -->
+        <LinearLayout
+            android:id="@+id/status_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:visibility="visible">
+
+            <ProgressBar
+                android:id="@+id/prograss"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:indeterminateTint="#ffffffff" />
+
+            <TextView
+                android:id="@+id/container"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="20dp"
+                android:text="Establishing Connection..."
+                android:textSize="13sp"
+                android:textColor="#ffffffff"
+                android:alpha="0.5"
+                android:fontFamily="@font/font" />
+
+            <TextView
+                android:id="@+id/download_progress"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:text=""
+                android:textSize="11sp"
+                android:textColor="#80ffffff"
+                android:fontFamily="@font/font" />
+
+        </LinearLayout>
+
+        <!-- licenseLayout (visible when idle/ready) -->
+        <LinearLayout
+            android:id="@+id/licenseLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/statusText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textSize="13sp"
+                android:textColor="#80ffffff"
+                android:gravity="center"
+                android:fontFamily="@font/font" />
+
+        </LinearLayout>
+
+        <!-- processingLayout (OBB copy) -->
+        <LinearLayout
+            android:id="@+id/processingLayout"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/syncText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textSize="13sp"
+                android:textColor="#ffffffff"
+                android:fontFamily="@font/font"
+                android:layout_marginBottom="8dp" />
+
+            <ProgressBar
+                android:id="@+id/obbProgressBar"
+                style="@android:style/Widget.ProgressBar.Horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="6dp"
+                android:progressTint="#ffd36615"
+                android:progressBackgroundTint="#33ffffff"
+                android:max="100"
+                android:progress="0"
+                android:layout_marginBottom="6dp" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/obbSizeText"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text=""
+                    android:textSize="11sp"
+                    android:textColor="#80ffffff"
+                    android:fontFamily="@font/font" />
+
+                <TextView
+                    android:id="@+id/obbPercentText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text=""
+                    android:textSize="11sp"
+                    android:textColor="#ffffffff"
+                    android:fontFamily="@font/font" />
+            </LinearLayout>
+
+        </LinearLayout>
+
+        <!-- Device info row -->
+        <LinearLayout
+            android:id="@+id/bgmiInstalledRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="16dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/deviceName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center_horizontal"
+                android:text=""
+                android:textSize="11sp"
+                android:textColor="#80ffffff"
+                android:fontFamily="@font/font" />
+
+        </LinearLayout>
+
+        <!-- btnOk (hidden) -->
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/btnOk"
+            android:layout_width="match_parent"
+            android:layout_height="46dp"
+            android:layout_marginTop="12dp"
+            android:backgroundTint="#33ffffff"
+            android:text="OK"
+            android:textColor="#ffffffff"
+            android:textAllCaps="false"
+            android:visibility="gone" />
+
+        <!-- Launch button -->
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/startgame"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:layout_marginTop="20dp"
+            android:background="@drawable/ios_button"
+            android:text="Launch Game"
+            android:textColor="#ffffffff"
+            android:textSize="17sp"
+            android:textAllCaps="false"
+            android:fontFamily="sans-serif-medium"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+</RelativeLayout>

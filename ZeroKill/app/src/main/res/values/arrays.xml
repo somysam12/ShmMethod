@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string-array name="bahasa">
+        <item>中国</item>
+        <item>Arabic</item>
+        <item>English</item>
+    </string-array>
+
+    <string-array name="skinlist">
+        <item>Skin Bape Set</item>
+        <item>Skin Joker Set</item>
+        <item>Skin Gojo Sotoru</item>
+        <item>Skin Mumy Fire</item>
+        <item>Skin Memories &amp; Blue Mumy</item>
+        <item>Skin Pharaoh X-Suit</item>
+        <item>Skin Poseidon X-Suit</item>
+        <item>Skin Reven Blood X-Suit</item>
+        <item>Skin Shining Nebula</item>
+        <item>Skin Sprit Master</item>
+        <item>Skin Sprit Vampire</item>
+
+    </string-array>
+
+    <string-array name="kernellist">
+        <item>4.9.186</item>
+        <item>4.14.117</item>
+        <item>4.14.180</item>
+        <item>4.14.186</item>
+        <item>4.14.186b</item>
+        <item>4.14.186c</item>
+        <item>4.19.81</item>
+        <item>4.19.113</item>
+        <item>4.19.113c</item>
+        <item>4.19.157</item>
+        <item>4.19.157b</item>
+        <item>4.19.157-13</item>
+        <item>4.19.191-13</item>
+        <item>5.4.210-13</item>
+        <item>5.15</item>
+        <item>5.15b</item>
+        <item>5.10</item>
+        <item>5.10b</item>
+        <item>5.10-13-GooglePixel</item>
+        <item>5.4.61~250</item>
+        <item>5.4.86~250</item>
+        <item>5.4.147~250</item>
+    </string-array>
+
+
+</resources>
