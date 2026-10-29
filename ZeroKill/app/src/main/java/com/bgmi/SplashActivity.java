@@ -18,6 +18,7 @@ import android.view.WindowManager;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
 @SuppressWarnings({"unused","deprecation"})
@@ -100,12 +101,35 @@ public class SplashActivity extends AppCompatActivity {
 
     private void exitSplash() {
         if (isFinishing() || isDestroyed()) return;
-        // Request notification permission on Android 13+ before going to login
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
                     != PackageManager.PERMISSION_GRANTED) {
-                requestPermissions(
-                    new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQ_NOTIF);
+                // Show rationale dialog first so the user knows why we need notifications,
+                // then trigger the system permission request.
+                // If the user previously denied (shouldShowRequestPermissionRationale=false
+                // and permission still not granted), send them to Settings instead.
+                if (shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)) {
+                    new AlertDialog.Builder(this)
+                        .setTitle("Enable Notifications")
+                        .setMessage("Allow notifications to receive alerts about your license and game session status.")
+                        .setPositiveButton("Allow", (d, w) -> {
+                            d.dismiss();
+                            requestPermissions(
+                                new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQ_NOTIF);
+                        })
+                        .setNegativeButton("Skip", (d, w) -> { d.dismiss(); goToLogin(); })
+                        .setCancelable(false)
+                        .show();
+                } else {
+                    // First request (never asked before): show the system dialog directly.
+                    // If they reached here after "Don't ask again": go to Settings.
+                    try {
+                        requestPermissions(
+                            new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQ_NOTIF);
+                    } catch (Exception ignored) {
+                        goToLogin();
+                    }
+                }
                 return;
             }
         }

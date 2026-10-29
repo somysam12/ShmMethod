@@ -1,0 +1,65 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+
+    <!--
+        BTheme — used by all virtual proxy activities (unchanged)
+    -->
+               <style name="BTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowDisablePreview">true</item>
+    </style>
+
+    <!--
+        ProxyWebDialogTheme — used ONLY by ProxyWebActivity (Facebook/OAuth WebView)
+        ═══════════════════════════════════════════════════════════════════════════════
+        KEY FIX: android:windowIsTranslucent="true"
+        ────────────────────────────────────────────
+        Without this attribute the Android window system HIDES all activities behind
+        ProxyWebActivity even if windowBackground is transparent. The game (GameActivity)
+        gets dispatchAppVisibility(false) and setWindowStopped(true), causing the
+        "black background" effect in image 1 instead of "game visible behind dialog"
+        in image 2.
+
+        With windowIsTranslucent="true" the compositor keeps rendering everything
+        behind this window. The game stays alive, focused, and visible. ProxyWebActivity
+        draws on top as a floating card with a dimmed overlay — exactly like image 2.
+
+        WHY NOT just set it programmatically?
+        → windowIsTranslucent must be declared in the XML theme. Android reads this
+          flag during activity creation before any Java code runs. Setting it in
+          onCreate() is too late — the window has already been created opaque.
+          w.setBackgroundDrawable(transparent) only changes paint; it does not change
+          whether the system keeps rendering the layers behind the window.
+
+        backgroundDimAmount / backgroundDimEnabled:
+        → These work together with windowIsTranslucent to produce the dark overlay
+          behind the floating card. The game is still rendered but darkened 60%.
+    -->
+    <style name="ProxyWebDialogTheme" parent="android:Theme.Translucent.NoTitleBar">
+        <!-- CRITICAL: keeps the game visible and running behind this window -->
+        <item name="android:windowIsTranslucent">true</item>
+
+        <!-- Transparent base — the white card is drawn by ProxyWebActivity code -->
+        <item name="android:windowBackground">@android:color/transparent</item>
+
+        <!-- Dim the game behind the card (60% darkness) -->
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:backgroundDimAmount">0.6</item>
+
+        <!-- No title bar, no preview snapshot -->
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowDisablePreview">true</item>
+
+        <!-- No enter/exit animation — dialog just appears -->
+        <item name="android:windowAnimationStyle">@null</item>
+
+        <!-- Allow the activity to draw under status/nav bars for clean overlay -->
+        <item name="android:windowLayoutInDisplayCutoutMode" tools:ignore="NewApi">shortEdges</item>
+    </style>
+
+    <style name="LauncherTheme" parent="Theme.AppCompat.NoActionBar">
+        <item name="android:windowBackground">#000000</item>
+        <item name="android:windowDisablePreview">true</item>
+    </style>
+
+</resources>

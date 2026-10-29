@@ -544,6 +544,7 @@ public class LoginActivity extends BaseActivity {
                 if (MundoCore.get() != null) MundoCore.get().launchApk(PKG_BGMI, 0);
                 runOnUiThread(() -> {
                     try { startService(new Intent(this, OverlayService.class)); } catch (Exception ig) {}
+                    overridePendingTransition(0, 0);
                     finish();
                 });
             } catch (Exception e) {
