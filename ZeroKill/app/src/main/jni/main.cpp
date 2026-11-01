@@ -881,28 +881,66 @@ static int ClassifyStatus(const std::string& s) {
 void *loda_thread(void *) {
     while (!g_App) { sleep(1); }
 
-    // Read lic file to populate Gamepackage (used by hook internals)
-    if (fileExists(Filepath) && !isFileEmpty(Filepath)) {
-        GetKey();
-        static char s_pkgBuf[256] = "com.bgmi";
-        if (pkgFromLic[0] != '\0')
-            strncpy(s_pkgBuf, pkgFromLic, sizeof(s_pkgBuf)-1);
-        Gamepackage = s_pkgBuf;
+    if (!fileExists(Filepath) || isFileEmpty(Filepath)) {
+        ShowDialogAndCrash("Login Required",
+            "Please login in the Vision app first.\nLicense file not found.");
+        return nullptr;
     }
 
-    // Grant access — server check is performed by the Java loader (Check/nativeVerifyLoginToken)
-    bconfiger    = true;
-    isLogin      = true;
-    bValid       = true;
-    EXP          = "Lifetime";
-    g_KC_ExpUnix = 0;   // 0 = lifetime in KC_BuildExpiryStr
+    GetKey();
 
-    if (MessageBoxExt) {
-        std::u16string v1 = StringToU16("Welcome to Vision 4.6!\n\nVision 4.6 \xe0\xa4\xae\xe0\xa5\x87\xe0\xa4\x82 \xe0\xa4\x86\xe0\xa4\xaa\xe0\xa4\x95\xe0\xa4\xbe \xe0\xa4\xb8\xe0\xa5\x8d\xe0\xa4\xb5\xe0\xa4\xbe\xe0\xa4\x97\xe0\xa4\xa4 \xe0\xa4\xb9\xe0\xa5\x88!\n\n(Secure mode)");
-        std::u16string v2 = StringToU16("Vision");
-        MessageBoxExt(0, v1.c_str(), v2.c_str(), 0);
+    if (keyForLogin[0] == '\0') {
+        ShowDialogAndCrash("Invalid License",
+            "License file is corrupted.\nRelogin in the Vision app.");
+        return nullptr;
     }
-    GunSkin = true;
+
+    std::string Keystatus;
+
+    // Set Gamepackage from lic file so Login/LoginWithSerial never sees nullptr
+    static char s_pkgBuf[256] = "com.bgmi";
+    if (pkgFromLic[0] != '\0')
+        strncpy(s_pkgBuf, pkgFromLic, sizeof(s_pkgBuf)-1);
+    Gamepackage = s_pkgBuf;
+
+    // Use loader's pre-computed UUID to avoid Android 8+ per-app ID mismatch
+    if (serialFromLic[0] != '\0')
+        Keystatus = LoginWithSerial(keyForLogin, serialFromLic);
+    else
+        Keystatus = Login(keyForLogin);
+
+    int cls = ClassifyStatus(Keystatus);
+
+    if (cls == 0) {
+        isLogin = bconfiger;
+        bValid  = isLogin;
+        if (!isLogin) {
+            ShowDialogAndCrash("Login Failed",
+                "Auth verification failed.\nPlease contact support.");
+            return nullptr;
+        }
+        if (MessageBoxExt) {
+            std::u16string v1 = StringToU16("Welcome to Vision 4.6!\n\nVision 4.6 \xe0\xa4\xae\xe0\xa5\x87\xe0\xa4\x82 \xe0\xa4\x86\xe0\xa4\xaa\xe0\xa4\x95\xe0\xa4\xbe \xe0\xa4\xb8\xe0\xa5\x8d\xe0\xa4\xb5\xe0\xa4\xbe\xe0\xa4\x97\xe0\xa4\xa4 \xe0\xa4\xb9\xe0\xa5\x88!\n\n(Secure mode)");
+            std::u16string v2 = StringToU16("Vision");
+            MessageBoxExt(0, v1.c_str(), v2.c_str(), 0);
+        }
+        GunSkin = true;
+        return nullptr;
+    } else if (cls == 1) {
+        ShowDialogAndCrash("Server Maintenance","Server is under maintenance.\nPlease try again later.");
+    } else if (cls == 2) {
+        ShowDialogAndCrash("HIWD MISMATCH","Your key has expired. HIWD mismatch detected.");
+    } else if (cls == 3) {
+        ShowDialogAndCrash("Device Limit Reached","This key is already activated on max devices.\nContact support to reset.");
+    } else if (cls == 4) {
+        ShowDialogAndCrash("HIWD MISMATCH","Key not recognized. HIWD mismatch detected.");
+    } else if (cls == 5) {
+        ShowDialogAndCrash("Clone Detected","This key is bound to a different APK.\nDo not use cloned APKs.");
+    } else if (cls == 6) {
+        ShowDialogAndCrash("Key Blocked","This key has been blocked.\nContact support.");
+    } else {
+        ShowDialogAndCrash("Connection Failed","Could not reach server.\nCheck your internet and try again.");
+    }
     return nullptr;
 }
 
@@ -2378,6 +2416,31 @@ Java_com_bgmi_LoginActivity_nativeVerifyLoginToken(JNIEnv *env, jclass, jstring 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_bgmi_MainActivity_exdate(JNIEnv *env, jclass) {
     return env->NewStringUTF("2099-12-31 23:59:59");
+}
+
+// Write License.txt directly via native I/O to bypass any Java-layer hooks.
+// Line format: key\nserial\ncom.bgmi\n  (pkg = "com.bgmi" matches Check())
+extern "C" JNIEXPORT void JNICALL
+Java_com_bgmi_LoginActivity_nativeWriteLicFile(JNIEnv *env, jclass,
+                                               jstring jKey, jstring jSerial) {
+    const char *key    = env->GetStringUTFChars(jKey,    nullptr);
+    const char *serial = env->GetStringUTFChars(jSerial, nullptr);
+
+    // Create directory tree (each mkdir is a no-op if level already exists)
+    mkdir("/storage/emulated/0/Android",                      0777);
+    mkdir("/storage/emulated/0/Android/obb",                  0777);
+    mkdir("/storage/emulated/0/Android/obb/com.visionpro",    0777);
+
+    const char *licPath = "/storage/emulated/0/Android/obb/com.visionpro/License.txt";
+    FILE *f = fopen(licPath, "w");
+    if (f) {
+        fprintf(f, "%s\n%s\ncom.bgmi\n", key ? key : "", serial ? serial : "");
+        fclose(f);
+        chmod(licPath, 0644);
+    }
+
+    env->ReleaseStringUTFChars(jKey,    key);
+    env->ReleaseStringUTFChars(jSerial, serial);
 }
 
 

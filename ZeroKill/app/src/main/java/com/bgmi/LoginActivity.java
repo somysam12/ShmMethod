@@ -76,6 +76,7 @@ public class LoginActivity extends BaseActivity {
     private static native boolean nativeVerifyLoginToken(String token);
     private static native String nativeGetSerial();
     private static native String Check(android.content.Context ctx, String key);
+    private static native void nativeWriteLicFile(String key, String serial);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -353,6 +354,7 @@ public class LoginActivity extends BaseActivity {
                     hideProcessing();
                     String serial = "";
                     try { serial = nativeGetSerial(); } catch (Throwable ignored) {}
+                    try { nativeWriteLicFile(key, serial); } catch (Throwable ignored) {}
                     writeLicFile(key, serial);
                     startObbCopyFromLogin(key, serial);
                 } else {
@@ -405,7 +407,7 @@ public class LoginActivity extends BaseActivity {
             java.io.File lic = new java.io.File(dir, "License.txt");
             String data = (key != null ? key : "") + "\n"
                         + (serial != null ? serial : "") + "\n"
-                        + getPackageName();
+                        + "com.bgmi";
             java.io.FileOutputStream fos = new java.io.FileOutputStream(lic, false);
             fos.write(data.getBytes("UTF-8"));
             fos.flush(); fos.close();
