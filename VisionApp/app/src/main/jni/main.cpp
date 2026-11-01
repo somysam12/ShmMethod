@@ -155,7 +155,7 @@ static void KC_BuildExpiryStr(char*, int);    // defined below
 
 // Renderer hook for GL screenshot + ImGui watermark/expiry/ESP
 #ifndef KC_RENDERER_OFFSET
-#define KC_RENDERER_OFFSET 0xAF76604
+#define KC_RENDERER_OFFSET 0   // disabled — offset unverified for current BGMI build
 #endif
 __int64 (*orig_renderer)(__int64 *a, int b) = nullptr;
 __int64 hook_renderer(__int64 *a, int b) {
@@ -196,25 +196,6 @@ __int64 hook_renderer(__int64 *a, int b) {
             "Vision Loader (v 4.6.0)",
             expiryBuf[0] ? expiryBuf : nullptr,
             g_GrenadeWarning && g_GrenadeNearby);
-    }
-
-    // ── Send ESP frame to VApp overlay every frame via UDP ────────────────────
-    if (screenWidth > 0 && screenHeight > 0) {
-        char expiryBuf2[64] = {};
-        KC_BuildExpiryStr(expiryBuf2, sizeof(expiryBuf2));
-        float aimR = (Cheat::BulletTrack::BulletRange > 0.f)
-                     ? Cheat::BulletTrack::BulletRange : Cheat::Aimbot::Radius;
-        EspSocket_SendFrame(
-            g_streamPlayers,  g_streamPlayerCount,
-            g_streamVehicles, g_streamVehicleCount,
-            screenWidth, screenHeight,
-            Cheat::Esp::Line,     Cheat::Esp::Skeleton,      Cheat::Esp::Health,
-            Cheat::Esp::Name,     Cheat::Esp::Distance,
-            Cheat::Esp::Vehicle::Name, Cheat::Esp::Count,    true,
-            aimR,
-            g_streamEnemyCount, g_streamBotCount,
-            "Vision Loader (v 4.6.0)",
-            expiryBuf2[0] ? expiryBuf2 : nullptr);
     }
 
     return result;
@@ -2061,6 +2042,25 @@ void* _PostRenderHook(UGameViewportClient* Viewport, UCanvas* Canvas) {
 
     if (ENABLE_GUN_SKIN && g_SkinsEnabled && GunSkin) {
         try { KC_DrawDeadBoxSkins(); } catch (...) {}
+    }
+
+    // ── Send ESP frame to VApp overlay every frame via UDP ────────────────
+    if (screenWidth > 0 && screenHeight > 0) {
+        char expiryBuf[64] = {};
+        KC_BuildExpiryStr(expiryBuf, sizeof(expiryBuf));
+        float aimR = (Cheat::BulletTrack::BulletRange > 0.f)
+                     ? Cheat::BulletTrack::BulletRange : Cheat::Aimbot::Radius;
+        EspSocket_SendFrame(
+            g_streamPlayers,  g_streamPlayerCount,
+            g_streamVehicles, g_streamVehicleCount,
+            (int)screenWidth, (int)screenHeight,
+            Cheat::Esp::Line,         Cheat::Esp::Skeleton,    Cheat::Esp::Health,
+            Cheat::Esp::Name,         Cheat::Esp::Distance,
+            Cheat::Esp::Vehicle::Name, Cheat::Esp::Count,      true,
+            aimR,
+            g_streamEnemyCount, g_streamBotCount,
+            "Vision Loader (v 4.6.0)",
+            expiryBuf[0] ? expiryBuf : nullptr);
     }
 
     return orig_PostRenderOriginal(Viewport, Canvas);
