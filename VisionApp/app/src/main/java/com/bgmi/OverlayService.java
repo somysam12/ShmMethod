@@ -37,12 +37,13 @@ import android.os.Handler;
 import android.os.Looper;
 
 import java.io.OutputStream;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
+import java.io.RandomAccessFile;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.MappedByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 
 @SuppressWarnings({"unused","deprecation"})
@@ -90,57 +91,43 @@ public class OverlayService extends Service {
     private int     stIpadRange=120;
     private boolean stIgnBot=false, stIgnKnocked=false;
 
-    // ── ESP Overlay ──────────────────────────────────────────────────────────
-    static final int   ESP_UDP_PORT   = 28901;
-    static final int   ESP_EVT_PORT   = 28902;
-    static final int   ESP_MAGIC      = 0x56455350;
-    static final int   ESP_FRAME_SIZE = 17200;   // slightly over sizeof(EspFrame) = 17068
-
-    // Packed layout constants (sizeof with #pragma pack(1))
-    // EspFrame header = 172 bytes
-    static final int OFF_MAGIC    = 0;
-    static final int OFF_SEQ      = 4;
-    static final int OFF_SCREENW  = 8;
-    static final int OFF_SCREENH  = 12;
-    static final int OFF_PLRCNT   = 16;
-    static final int OFF_VEHCNT   = 20;
-    static final int OFF_ENECNT   = 24;
-    static final int OFF_BOTCNT   = 28;
-    static final int OFF_SHOWLINE = 32;
-    static final int OFF_SHOWSKEL = 33;
-    static final int OFF_SHOWHP   = 34;
-    static final int OFF_SHOWNAME = 35;
-    static final int OFF_SHOWDIST = 36;
-    static final int OFF_SHOWVEH  = 37;
-    static final int OFF_SHOWCNT  = 38;
-    static final int OFF_SHOWWPN  = 39;
-    static final int OFF_AIMRANGE = 40;
-    static final int OFF_WMARK    = 44;   // char[64]
-    static final int OFF_EXPIRY   = 108;  // char[64]
-    static final int OFF_PLAYERS  = 172;  // EspPlayer[64], each 240 bytes
-    static final int PLR_SIZE     = 240;
-    // EspPlayer layout (offset within player struct):
-    // 0=headX 4=headY 8=footX 12=footY 16=health 20=healthMax 24=dist
-    // 28=bones[18][2]=144 bytes  172=name[32]  204=weaponName[32]
-    // 236=hasLOS 237=isBot 238=isKnocked 239=pad
-    static final int OFF_VEHICLES = 172 + 64 * 240;   // 15532
-    static final int VEH_SIZE     = 48;
-    // EspVehicle layout: 0=scrX 4=scrY 8=dist 12=hasDriver 13=pad[3] 16=name[32]
-    // Bone connections [from, to] indices
+    // ── SHM ESP overlay ──────────────────────────────────────────────────────
+    // VpEspFrame layout (matches ShmESP.h in VNative, #pragma pack(1)):
+    //   header  32 bytes: seqWrite(4) pad(4) canvasW(4) canvasH(4)
+    //                      playerCount(4) vehicleCount(4) enemyCount(4) botCount(4)
+    //   players 100 * 240 bytes at offset 32
+    //   vehicles 20 * 48 bytes at offset 24032
+    //   extra[64] at offset 24992 — extra[0] = loginSuccess
+    static final String VP_SHM_PATH      = "/data/local/tmp/vp_esp_v1";
+    static final int    VP_MAX_PLAYERS   = 100;
+    static final int    VP_MAX_VEHICLES  = 20;
+    static final int    VP_PLAYER_STRIDE = 240;
+    static final int    VP_VEHICLE_STRIDE= 48;
+    static final int    VP_PLAYERS_OFFSET= 32;
+    static final int    VP_VEHICLES_OFFSET = 32 + 100 * 240;   // 24032
+    static final int    VP_EXTRA_OFFSET  = 24032 + 20 * 48;    // 24992
+    static final int    VP_SHM_SIZE      = 24992 + 64;         // 25056
+    static final long   DRAW_INTERVAL_MS = 35L;                // ~28 fps
+    // VpEspPlayer layout (offset within 240-byte stride):
+    //   0=headX 4=headY 8=footX 12=footY 16=health 20=healthMax 24=dist
+    //   28=bones[18][2]=144 bytes  172=name[32]  204=weaponName[32]
+    //   236=hasLOS 237=isBot 238=isKnocked 239=pad
+    // VpEspVehicle layout (offset within 48-byte stride):
+    //   0=scrX 4=scrY 8=dist  12=name[32]  44=hasDriver 45=pad[3]
     static final int[][] BONE_LINKS = {
-        {0,1},{1,2},{2,3},{3,4},{4,5},    // spine chain
-        {1,6},{6,7},{7,8},                 // right arm
-        {1,9},{9,10},{10,11},              // left arm
-        {5,12},{12,13},{13,14},            // right leg
-        {5,15},{15,16},{16,17}             // left leg
+        {0,1},{1,2},{2,3},{3,4},{4,5},
+        {1,6},{6,7},{7,8},
+        {1,9},{9,10},{10,11},
+        {5,12},{12,13},{13,14},
+        {5,15},{15,16},{16,17}
     };
 
-    private volatile byte[]   latestEspFrame  = null;
-    private volatile long     latestEspSeq    = -1;
-    private EspOverlayView    espOverlayView  = null;
-    private DatagramSocket    espUdpSocket    = null;
-    private DatagramSocket    evtUdpSocket    = null;
-    private View              loginDialogView = null;
+    private RandomAccessFile     shmFile        = null;
+    private MappedByteBuffer     shmBuf         = null;
+    private EspView              espView        = null;
+    private volatile boolean     loginShown     = false;
+    private volatile long        lastDrawMs     = 0L;
+    private View                 loginDialogView = null;
 
     @Override public IBinder onBind(Intent i) { return null; }
 
@@ -157,12 +144,11 @@ public class OverlayService extends Service {
     private void cleanupOverlay() {
         tcpRunning = false;
         try { cmdQueue.offer("ping"); } catch (Exception ignored) {}
-        if (espOverlayView  != null) { try { wm.removeView(espOverlayView);  } catch (Exception ig) {} espOverlayView  = null; }
+        if (espView         != null) { try { wm.removeView(espView);         } catch (Exception ig) {} espView         = null; }
         if (loginDialogView != null) { try { wm.removeView(loginDialogView); } catch (Exception ig) {} loginDialogView = null; }
-        if (menuView != null) { try { wm.removeView(menuView); } catch (Exception ig) {} menuView = null; }
-        if (iconRoot != null) { try { wm.removeView(iconRoot); } catch (Exception ig) {} iconRoot = null; }
-        try { if (espUdpSocket != null) espUdpSocket.close(); } catch (Exception ig) {}
-        try { if (evtUdpSocket != null) evtUdpSocket.close(); } catch (Exception ig) {}
+        if (menuView        != null) { try { wm.removeView(menuView);        } catch (Exception ig) {} menuView        = null; }
+        if (iconRoot        != null) { try { wm.removeView(iconRoot);        } catch (Exception ig) {} iconRoot        = null; }
+        closeShm();
     }
 
     @Override public void onCreate() {
@@ -173,8 +159,8 @@ public class OverlayService extends Service {
         vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
         addEspOverlay();
         addFloatingIcon();
-        startEspReceiver();
-        startEventReceiver();
+        openShm();
+        startChoreographer();
         new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(this::sendInitialState, 2000);
     }
 
@@ -1325,10 +1311,10 @@ public class OverlayService extends Service {
         return col;
     }
 
-    // ── ESP OVERLAY ──────────────────────────────────────────────────────────────
+    // ── SHM ESP OVERLAY ──────────────────────────────────────────────────────────
 
     private void addEspOverlay() {
-        espOverlayView = new EspOverlayView(this);
+        espView = new EspView(this);
         WindowManager.LayoutParams p = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT,
                 WindowManager.LayoutParams.MATCH_PARENT,
@@ -1337,59 +1323,56 @@ public class OverlayService extends Service {
                 | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
                 | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
                 | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+                | WindowManager.LayoutParams.FLAG_FULLSCREEN
                 | WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
-                PixelFormat.TRANSLUCENT);
+                PixelFormat.RGBA_8888);
         p.gravity = Gravity.TOP | Gravity.START;
-        try { wm.addView(espOverlayView, p); } catch (Exception e) { espOverlayView = null; }
+        try { wm.addView(espView, p); } catch (Exception e) { espView = null; }
     }
 
-    // ── UDP receiver: ESP frames from VNative (port 28901) ──────────────────
-    private void startEspReceiver() {
-        Thread t = new Thread(() -> {
-            try {
-                espUdpSocket = new DatagramSocket(null);
-                espUdpSocket.setReuseAddress(true);
-                espUdpSocket.bind(new InetSocketAddress("127.0.0.1", ESP_UDP_PORT));
-                espUdpSocket.setReceiveBufferSize(ESP_FRAME_SIZE * 4);
-                byte[] buf = new byte[ESP_FRAME_SIZE];
-                DatagramPacket pkt = new DatagramPacket(buf, buf.length);
-                while (true) {
-                    espUdpSocket.receive(pkt);
-                    if (pkt.getLength() < 44) continue;
-                    int magic = ByteBuffer.wrap(buf, 0, 4).order(ByteOrder.LITTLE_ENDIAN).getInt();
-                    if (magic != ESP_MAGIC) continue;
-                    byte[] frame = new byte[pkt.getLength()];
-                    System.arraycopy(buf, 0, frame, 0, pkt.getLength());
-                    latestEspFrame = frame;
-                    if (espOverlayView != null) espOverlayView.postInvalidate();
-                }
-            } catch (Exception ignored) {}
-        }, "VisionEspRx");
-        t.setDaemon(true);
-        t.setPriority(Thread.MAX_PRIORITY);
-        t.start();
+    private void openShm() {
+        try {
+            shmFile = new RandomAccessFile(VP_SHM_PATH, "rw");
+            shmFile.setLength(VP_SHM_SIZE);
+            shmBuf  = shmFile.getChannel()
+                    .map(FileChannel.MapMode.READ_WRITE, 0, VP_SHM_SIZE);
+            shmBuf.order(ByteOrder.LITTLE_ENDIAN);
+        } catch (Exception e) {
+            shmBuf = null;
+            android.util.Log.e("ShmESP", "openShm failed: " + e.getMessage());
+        }
     }
 
-    // ── UDP receiver: events from VNative (port 28902) ───────────────────────
-    private void startEventReceiver() {
-        Thread t = new Thread(() -> {
-            try {
-                evtUdpSocket = new DatagramSocket(null);
-                evtUdpSocket.setReuseAddress(true);
-                evtUdpSocket.bind(new InetSocketAddress("127.0.0.1", ESP_EVT_PORT));
-                byte[] buf = new byte[256];
-                DatagramPacket pkt = new DatagramPacket(buf, buf.length);
-                while (true) {
-                    evtUdpSocket.receive(pkt);
-                    String evt = new String(buf, 0, pkt.getLength(), StandardCharsets.UTF_8).trim();
-                    if ("loginsuccess".equals(evt)) {
-                        new Handler(Looper.getMainLooper()).post(this::showLoginDialog);
+    private void closeShm() {
+        shmBuf = null;
+        try { if (shmFile != null) { shmFile.close(); shmFile = null; } } catch (Exception ig) {}
+    }
+
+    private void startChoreographer() {
+        new Handler(Looper.getMainLooper()).post(() ->
+            android.view.Choreographer.getInstance().postFrameCallback(
+                new android.view.Choreographer.FrameCallback() {
+                    @Override
+                    public void doFrame(long frameTimeNanos) {
+                        long now = System.currentTimeMillis();
+                        if (now - lastDrawMs >= DRAW_INTERVAL_MS) {
+                            lastDrawMs = now;
+                            if (!loginShown && shmBuf != null) {
+                                try {
+                                    int seq = shmBuf.getInt(0);
+                                    if ((seq & 1) == 0 && seq > 0
+                                            && shmBuf.get(VP_EXTRA_OFFSET) != 0) {
+                                        loginShown = true;
+                                        new Handler(Looper.getMainLooper())
+                                                .post(OverlayService.this::showLoginDialog);
+                                    }
+                                } catch (Exception ignored) {}
+                            }
+                            if (espView != null) espView.postInvalidate();
+                        }
+                        android.view.Choreographer.getInstance().postFrameCallback(this);
                     }
-                }
-            } catch (Exception ignored) {}
-        }, "VisionEvtRx");
-        t.setDaemon(true);
-        t.start();
+                }));
     }
 
     // ── Login success dialog (matches Vision 4.6 UE4 dialog style) ───────────
@@ -1489,13 +1472,14 @@ public class OverlayService extends Service {
         });
     }
 
-    // ── EspOverlayView — draws ESP on full-screen transparent canvas ──────────
-    private class EspOverlayView extends View {
+    // ── EspView — draws ESP on full-screen transparent canvas via SHM ────────
+    private class EspView extends View {
 
         private final Paint pLine    = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint pSkel    = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint pHpBg    = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint pHpFill  = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint pBotHp   = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint pText    = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint pWmark   = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint pExpiry  = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -1504,16 +1488,14 @@ public class OverlayService extends Service {
         private final Paint pCntText = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final RectF  tmpRect  = new RectF();
 
-        private final Paint pBotHp   = new Paint(Paint.ANTI_ALIAS_FLAG);
-
-        EspOverlayView(android.content.Context ctx) {
+        EspView(android.content.Context ctx) {
             super(ctx);
             setWillNotDraw(false);
             setLayerType(LAYER_TYPE_SOFTWARE, null);
 
             pLine.setStrokeWidth(1.8f);    pLine.setStyle(Paint.Style.STROKE);
             pSkel.setStrokeWidth(1.5f);    pSkel.setStyle(Paint.Style.STROKE);
-            pHpBg.setColor(Color.argb(180, 20, 20, 20));
+            pHpBg.setColor(Color.argb(180, 20, 20, 20));  pHpBg.setStyle(Paint.Style.FILL);
             pHpFill.setStyle(Paint.Style.FILL);
             pText.setTextSize(28f);        pText.setColor(Color.WHITE);
             pText.setTypeface(Typeface.MONOSPACE);
@@ -1521,9 +1503,9 @@ public class OverlayService extends Service {
             pWmark.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
             pExpiry.setTextSize(26f);      pExpiry.setColor(Color.rgb(0,255,255));
             pExpiry.setTypeface(Typeface.MONOSPACE);
-            pCntBg.setColor(Color.rgb(30,80,200));    pCntBg.setStyle(Paint.Style.FILL);
-            pCntDark.setColor(Color.argb(200,15,15,15)); pCntDark.setStyle(Paint.Style.FILL);
-            pCntText.setColor(Color.WHITE); pCntText.setTextSize(30f);
+            pCntBg.setColor(Color.rgb(30,80,200));          pCntBg.setStyle(Paint.Style.FILL);
+            pCntDark.setColor(Color.argb(200,15,15,15));    pCntDark.setStyle(Paint.Style.FILL);
+            pCntText.setColor(Color.WHITE);  pCntText.setTextSize(30f);
             pCntText.setTypeface(Typeface.create(Typeface.MONOSPACE, Typeface.BOLD));
             pCntText.setTextAlign(Paint.Align.CENTER);
         }
@@ -1534,87 +1516,82 @@ public class OverlayService extends Service {
         }
 
         private void onDrawInternal(Canvas canvas) {
-            byte[] frame = latestEspFrame;
-            if (frame == null || frame.length < OFF_PLAYERS) return;
+            MappedByteBuffer buf = shmBuf;
+            if (buf == null) return;
 
-            ByteBuffer buf = ByteBuffer.wrap(frame).order(ByteOrder.LITTLE_ENDIAN);
-            if (buf.getInt(OFF_MAGIC) != ESP_MAGIC) return;
+            // SeqLock read — skip if writer is busy
+            int seq;
+            try { seq = buf.getInt(0); } catch (Exception e) { return; }
+            if ((seq & 1) != 0) return;  // writer busy
+            if (seq == 0) return;         // no data yet
 
-            int   screenW  = buf.getInt(OFF_SCREENW);
-            int   screenH  = buf.getInt(OFF_SCREENH);
-            if (screenW <= 0 || screenH <= 0) return;
+            int canvasW = buf.getInt(8);
+            int canvasH = buf.getInt(12);
+            if (canvasW <= 0 || canvasH <= 0) return;
 
-            int vw = getWidth();
-            int vh = getHeight();
+            int vw = getWidth(), vh = getHeight();
             if (vw <= 0 || vh <= 0) return;
 
-            float scaleX   = (float) vw / screenW;
-            float scaleY   = (float) vh / screenH;
-            if (scaleX <= 0f || scaleY <= 0f) return;
+            float scaleX = (float) vw / canvasW;
+            float scaleY = (float) vh / canvasH;
 
-            int   plrCnt   = Math.min(buf.getInt(OFF_PLRCNT),  64);
-            int   vehCnt   = Math.min(buf.getInt(OFF_VEHCNT),  32);
-            int   eneCnt   = buf.getInt(OFF_ENECNT);
-            int   botCnt   = buf.getInt(OFF_BOTCNT);
-            boolean showLine = buf.get(OFF_SHOWLINE) != 0;
-            boolean showSkel = buf.get(OFF_SHOWSKEL) != 0;
-            boolean showHp   = buf.get(OFF_SHOWHP)   != 0;
-            boolean showName = buf.get(OFF_SHOWNAME)  != 0;
-            boolean showDist = buf.get(OFF_SHOWDIST)  != 0;
-            boolean showVeh  = buf.get(OFF_SHOWVEH)   != 0;
-            boolean showCnt  = buf.get(OFF_SHOWCNT)   != 0;
-            boolean showWpn  = buf.get(OFF_SHOWWPN)   != 0;
-            float   aimRange = buf.getFloat(OFF_AIMRANGE);
+            int plrCnt = Math.min(buf.getInt(16), VP_MAX_PLAYERS);
+            int vehCnt = Math.min(buf.getInt(20), VP_MAX_VEHICLES);
+            int eneCnt = buf.getInt(24);
+            int botCnt = buf.getInt(28);
 
-            String watermark = readString(frame, OFF_WMARK,  64);
-            String expiry    = readString(frame, OFF_EXPIRY, 64);
+            // Verify seqWrite unchanged after read header
+            if (buf.getInt(0) != seq) return;
 
-            // ── Players ───────────────────────────────────────────────────────
+            boolean showLine = stLine;
+            boolean showSkel = stSkel;
+            boolean showHp   = stHealth;
+            boolean showName = true;
+            boolean showDist = stDist;
+            boolean showVeh  = stVehicle;
+            boolean showCnt  = stCount;
+
+            // ── Players ─────────────────────────────────────────────────────
             for (int i = 0; i < plrCnt; i++) {
-                int base    = OFF_PLAYERS + i * PLR_SIZE;
-                if (base + PLR_SIZE > frame.length) break;
+                int base = VP_PLAYERS_OFFSET + i * VP_PLAYER_STRIDE;
 
-                float headX = buf.getFloat(base +   0) * scaleX;
-                float headY = buf.getFloat(base +   4) * scaleY;
-                float footX = buf.getFloat(base +   8) * scaleX;
-                float footY = buf.getFloat(base +  12) * scaleY;
-                float hp    = buf.getFloat(base +  16);
-                float hpMax = buf.getFloat(base +  20);
-                float dist  = buf.getFloat(base +  24);
+                float headX = buf.getFloat(base +  0) * scaleX;
+                float headY = buf.getFloat(base +  4) * scaleY;
+                float footX = buf.getFloat(base +  8) * scaleX;
+                float footY = buf.getFloat(base + 12) * scaleY;
+                float hp    = buf.getFloat(base + 16);
+                float hpMax = buf.getFloat(base + 20);
+                float dist  = buf.getFloat(base + 24);
 
-                boolean hasLOS    = frame[base + 236] != 0;
-                boolean isBot     = frame[base + 237] != 0;
-                boolean isKnocked = frame[base + 238] != 0;
+                boolean hasLOS    = buf.get(base + 236) != 0;
+                boolean isBot     = buf.get(base + 237) != 0;
+                boolean isKnocked = buf.get(base + 238) != 0;
 
-                String name  = readString(frame, base + 172, 32);
-                String wpn   = readString(frame, base + 204, 32);
+                String name = readShmString(buf, base + 172, 32);
+                String wpn  = readShmString(buf, base + 204, 32);
 
-                // Pick colors
                 int lineColor, skelColor;
                 if (isBot) {
-                    lineColor = Color.rgb(17, 17, 17);   // Black
+                    lineColor = Color.rgb(17, 17, 17);
                     skelColor = Color.rgb(17, 17, 17);
                 } else if (hasLOS) {
-                    lineColor = 0xFFFFFFFF;              // White — visible player
+                    lineColor = 0xFFFFFFFF;             // White — visible
                     skelColor = 0xFFFFFFFF;
                 } else {
-                    lineColor = Color.rgb(255, 36, 36);  // Red — behind cover
+                    lineColor = Color.rgb(255, 36, 36); // Red — behind cover
                     skelColor = Color.rgb(255, 36, 36);
                 }
 
-                // Line (foot→head)
                 if (showLine) {
                     pLine.setColor(lineColor);
                     canvas.drawLine(footX, footY, headX, headY, pLine);
                 }
 
-                // Skeleton
                 if (showSkel) {
                     pSkel.setColor(skelColor);
                     for (int[] link : BONE_LINKS) {
                         int bA = base + 28 + link[0] * 8;
                         int bB = base + 28 + link[1] * 8;
-                        if (bA + 8 > frame.length || bB + 8 > frame.length) continue;
                         float ax = buf.getFloat(bA)     * scaleX;
                         float ay = buf.getFloat(bA + 4) * scaleY;
                         float bx = buf.getFloat(bB)     * scaleX;
@@ -1625,17 +1602,15 @@ public class OverlayService extends Service {
                     }
                 }
 
-                // Health bar (above head, 56 wide, 4 tall)
                 if (showHp && hpMax > 0) {
-                    float barW  = 56f * scaleX;
-                    float barH  = 4f  * scaleY;
-                    float barX  = headX - barW / 2f;
-                    float barY  = headY - barH * 2f - 8f * scaleY;
+                    float barW = 56f * scaleX;
+                    float barH = 4f  * scaleY;
+                    float barX = headX - barW / 2f;
+                    float barY = headY - barH * 2f - 8f * scaleY;
                     tmpRect.set(barX, barY, barX + barW, barY + barH);
                     canvas.drawRoundRect(tmpRect, 2f, 2f, pHpBg);
-                    float fill  = (hp / hpMax) * barW;
+                    float fill = (hp / hpMax) * barW;
                     if (isBot) {
-                        // Bot HP: black fill + white outline
                         pBotHp.setColor(Color.rgb(17,17,17)); pBotHp.setStyle(Paint.Style.FILL);
                         pBotHp.setStrokeWidth(1f);
                         tmpRect.set(barX, barY, barX + fill, barY + barH);
@@ -1645,33 +1620,28 @@ public class OverlayService extends Service {
                         canvas.drawRoundRect(tmpRect, 2f, 2f, pBotHp);
                     } else {
                         pHpFill.setColor(isKnocked
-                                ? Color.rgb(255,0,0)
-                                : Color.rgb(0,255,255));    // Cyan alive, Red knocked
+                                ? Color.rgb(255, 0, 0)
+                                : Color.rgb(0, 255, 255));  // Cyan alive, Red knocked
                         tmpRect.set(barX, barY, barX + fill, barY + barH);
                         canvas.drawRoundRect(tmpRect, 2f, 2f, pHpFill);
                     }
                 }
 
-                // Name + weapon
                 if (showName && !name.isEmpty() && !isBot) {
                     pText.setColor(Color.WHITE);
                     pText.setTextSize(24f * scaleY);
                     pText.setTextAlign(Paint.Align.CENTER);
                     canvas.drawText(name, footX, footY + 20f * scaleY, pText);
                 }
-                if (showWpn && !wpn.isEmpty()) {
+                if (!wpn.isEmpty()) {
                     pText.setColor(Color.WHITE);
                     pText.setTextSize(22f * scaleY);
                     pText.setTextAlign(Paint.Align.CENTER);
                     canvas.drawText(wpn, footX, footY + 40f * scaleY, pText);
                 }
 
-                // Distance
                 if (showDist) {
-                    int dCol = (dist <= aimRange)
-                            ? Color.WHITE
-                            : Color.WHITE;  // always white per spec
-                    pText.setColor(dCol);
+                    pText.setColor(Color.WHITE);
                     pText.setTextSize(22f * scaleY);
                     pText.setTextAlign(Paint.Align.CENTER);
                     canvas.drawText(String.format("%.0f M", dist),
@@ -1679,25 +1649,22 @@ public class OverlayService extends Service {
                 }
             }
 
-            // ── Vehicles ──────────────────────────────────────────────────────
+            // ── Vehicles ────────────────────────────────────────────────────
             if (showVeh) {
                 for (int i = 0; i < vehCnt; i++) {
-                    int base = OFF_VEHICLES + i * VEH_SIZE;
-                    if (base + VEH_SIZE > frame.length) break;
-                    float vx      = buf.getFloat(base + 0) * scaleX;
-                    float vy      = buf.getFloat(base + 4) * scaleY;
-                    float vDist   = buf.getFloat(base + 8);
-                    boolean hasDrv = frame[base + 12] != 0;
-                    String vName  = readString(frame, base + 16, 32);
-                    pText.setColor(Color.rgb(255,215,0));   // Yellow for vehicles
+                    int base  = VP_VEHICLES_OFFSET + i * VP_VEHICLE_STRIDE;
+                    float vx  = buf.getFloat(base + 0) * scaleX;
+                    float vy  = buf.getFloat(base + 4) * scaleY;
+                    float vd  = buf.getFloat(base + 8);
+                    String vn = readShmString(buf, base + 12, 32);
+                    pText.setColor(Color.rgb(255,215,0));
                     pText.setTextSize(24f * scaleY);
                     pText.setTextAlign(Paint.Align.CENTER);
-                    canvas.drawText(String.format("%s (%.0f M)", vName, vDist),
-                            vx, vy, pText);
+                    canvas.drawText(String.format("%s (%.0f M)", vn, vd), vx, vy, pText);
                 }
             }
 
-            // ── Enemy counter (same position as native: center-top, y≈62) ────
+            // ── Enemy counter ────────────────────────────────────────────────
             if (showCnt && (eneCnt > 0 || botCnt > 0)) {
                 String cntStr = eneCnt + " - " + botCnt;
                 float cntX  = getWidth() * 0.5f;
@@ -1707,12 +1674,9 @@ public class OverlayService extends Service {
                 float tw    = pCntText.measureText(cntStr);
                 float boxW  = tw + pad * 2f;
 
-                // Blue pill background
                 tmpRect.set(cntX - boxW/2f, cntY - boxH/2f, cntX + boxW/2f, cntY + boxH/2f);
                 float r = boxH / 2f;
                 canvas.drawRoundRect(tmpRect, r, r, pCntBg);
-
-                // Dark inner inset
                 tmpRect.inset(3f * scaleX, 3f * scaleY);
                 canvas.drawRoundRect(tmpRect, r - 3f, r - 3f, pCntDark);
 
@@ -1722,28 +1686,35 @@ public class OverlayService extends Service {
                 canvas.drawText(cntStr, cntX, textY, pCntText);
             }
 
-            // ── Watermark (bottom-right corner) ───────────────────────────────
-            if (!watermark.isEmpty()) {
-                pWmark.setTextAlign(Paint.Align.RIGHT);
-                pWmark.setTextSize(32f * scaleY);
-                canvas.drawText(watermark, getWidth() - 16f * scaleX,
-                        getHeight() - 40f * scaleY, pWmark);
-            }
+            // ── Watermark ────────────────────────────────────────────────────
+            pWmark.setTextAlign(Paint.Align.RIGHT);
+            pWmark.setTextSize(32f * scaleY);
+            canvas.drawText("Vision Loader (v 4.6.0)",
+                    getWidth() - 16f * scaleX, getHeight() - 40f * scaleY, pWmark);
 
-            // ── Expiry (below watermark) ───────────────────────────────────────
-            if (!expiry.isEmpty()) {
-                pExpiry.setTextAlign(Paint.Align.RIGHT);
-                pExpiry.setTextSize(26f * scaleY);
-                canvas.drawText(expiry, getWidth() - 16f * scaleX,
-                        getHeight() - 16f * scaleY, pExpiry);
-            }
+            // ── Expiry (placeholder — extend with real date logic if needed) ─
+            pExpiry.setTextAlign(Paint.Align.RIGHT);
+            pExpiry.setTextSize(26f * scaleY);
+            // Format current date in IST as expiry indicator
+            java.util.Calendar cal = java.util.Calendar.getInstance(
+                    java.util.TimeZone.getTimeZone("Asia/Kolkata"));
+            String dateStr = String.format("%02d/%02d/%04d",
+                    cal.get(java.util.Calendar.DAY_OF_MONTH),
+                    cal.get(java.util.Calendar.MONTH) + 1,
+                    cal.get(java.util.Calendar.YEAR));
+            canvas.drawText(dateStr, getWidth() - 16f * scaleX,
+                    getHeight() - 16f * scaleY, pExpiry);
         }
 
-        private String readString(byte[] buf, int offset, int maxLen) {
-            int end = offset;
-            int limit = Math.min(offset + maxLen, buf.length);
-            while (end < limit && buf[end] != 0) end++;
-            return new String(buf, offset, end - offset, StandardCharsets.UTF_8);
+        private String readShmString(MappedByteBuffer buf, int offset, int maxLen) {
+            byte[] tmp = new byte[maxLen];
+            int len = 0;
+            for (int k = 0; k < maxLen; k++) {
+                byte b = buf.get(offset + k);
+                if (b == 0) break;
+                tmp[len++] = b;
+            }
+            return new String(tmp, 0, len, StandardCharsets.UTF_8);
         }
     }
 
