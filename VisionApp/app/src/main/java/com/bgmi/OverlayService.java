@@ -1336,10 +1336,11 @@ public class OverlayService extends Service {
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                 | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
                 | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-                | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+                | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+                | WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED,
                 PixelFormat.TRANSLUCENT);
         p.gravity = Gravity.TOP | Gravity.START;
-        wm.addView(espOverlayView, p);
+        try { wm.addView(espOverlayView, p); } catch (Exception e) { espOverlayView = null; }
     }
 
     // ── UDP receiver: ESP frames from VNative (port 28901) ──────────────────
@@ -1503,9 +1504,12 @@ public class OverlayService extends Service {
         private final Paint pCntText = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final RectF  tmpRect  = new RectF();
 
+        private final Paint pBotHp   = new Paint(Paint.ANTI_ALIAS_FLAG);
+
         EspOverlayView(android.content.Context ctx) {
             super(ctx);
-            setLayerType(LAYER_TYPE_HARDWARE, null);
+            setWillNotDraw(false);
+            setLayerType(LAYER_TYPE_SOFTWARE, null);
 
             pLine.setStrokeWidth(1.8f);    pLine.setStyle(Paint.Style.STROKE);
             pSkel.setStrokeWidth(1.5f);    pSkel.setStyle(Paint.Style.STROKE);
@@ -1526,6 +1530,10 @@ public class OverlayService extends Service {
 
         @Override
         protected void onDraw(Canvas canvas) {
+            try { onDrawInternal(canvas); } catch (Exception ignored) {}
+        }
+
+        private void onDrawInternal(Canvas canvas) {
             byte[] frame = latestEspFrame;
             if (frame == null || frame.length < OFF_PLAYERS) return;
 
@@ -1536,8 +1544,13 @@ public class OverlayService extends Service {
             int   screenH  = buf.getInt(OFF_SCREENH);
             if (screenW <= 0 || screenH <= 0) return;
 
-            float scaleX   = (float) getWidth()  / screenW;
-            float scaleY   = (float) getHeight() / screenH;
+            int vw = getWidth();
+            int vh = getHeight();
+            if (vw <= 0 || vh <= 0) return;
+
+            float scaleX   = (float) vw / screenW;
+            float scaleY   = (float) vh / screenH;
+            if (scaleX <= 0f || scaleY <= 0f) return;
 
             int   plrCnt   = Math.min(buf.getInt(OFF_PLRCNT),  64);
             int   vehCnt   = Math.min(buf.getInt(OFF_VEHCNT),  32);
@@ -1623,14 +1636,13 @@ public class OverlayService extends Service {
                     float fill  = (hp / hpMax) * barW;
                     if (isBot) {
                         // Bot HP: black fill + white outline
-                        Paint botHp = new Paint(Paint.ANTI_ALIAS_FLAG);
-                        botHp.setColor(Color.rgb(17,17,17)); botHp.setStyle(Paint.Style.FILL);
+                        pBotHp.setColor(Color.rgb(17,17,17)); pBotHp.setStyle(Paint.Style.FILL);
+                        pBotHp.setStrokeWidth(1f);
                         tmpRect.set(barX, barY, barX + fill, barY + barH);
-                        canvas.drawRoundRect(tmpRect, 2f, 2f, botHp);
-                        botHp.setColor(Color.WHITE); botHp.setStyle(Paint.Style.STROKE);
-                        botHp.setStrokeWidth(1f);
+                        canvas.drawRoundRect(tmpRect, 2f, 2f, pBotHp);
+                        pBotHp.setColor(Color.WHITE); pBotHp.setStyle(Paint.Style.STROKE);
                         tmpRect.set(barX, barY, barX + barW, barY + barH);
-                        canvas.drawRoundRect(tmpRect, 2f, 2f, botHp);
+                        canvas.drawRoundRect(tmpRect, 2f, 2f, pBotHp);
                     } else {
                         pHpFill.setColor(isKnocked
                                 ? Color.rgb(255,0,0)
