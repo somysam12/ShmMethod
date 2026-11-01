@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Zero Kill Cyber Dragon Palette -->
+    <color name="zk_bg">#060A10</color>
+    <color name="zk_surface">#0C1220</color>
+    <color name="zk_surface_alt">#0F1828</color>
+    <color name="zk_card">#111B2A</color>
+    <color name="zk_border">#1E2D42</color>
+
+    <!-- Dragon Crimson Fire -->
+    <color name="zk_fire_dark">#8B0020</color>
+    <color name="zk_fire_mid">#C0003A</color>
+    <color name="zk_fire_bright">#E5004A</color>
+    <color name="zk_fire_glow">#FF1A5C</color>
+
+    <!-- Neon Cyan Ice -->
+    <color name="zk_ice_dark">#007A99</color>
+    <color name="zk_ice_mid">#00CCFF</color>
+    <color name="zk_ice_bright">#00E5FF</color>
+    <color name="zk_ice_glow">#80F0FF</color>
+
+    <!-- Fire Gold -->
+    <color name="zk_gold">#FF7733</color>
+    <color name="zk_gold_light">#FFAA55</color>
+
+    <!-- Text -->
+    <color name="zk_text_primary">#FFFFFF</color>
+    <color name="zk_text_secondary">#8899BB</color>
+    <color name="zk_text_accent">#00E5FF</color>
+    <color name="zk_text_dim">#445566</color>
+
+    <!-- Status -->
+    <color name="zk_online">#00E676</color>
+    <color name="zk_offline">#FF1744</color>
+    <color name="zk_warning">#FF7733</color>
+
+    <!-- Overlay / translucent -->
+    <color name="zk_overlay_dark">#CC060A10</color>
+    <color name="zk_overlay_mid">#990C1220</color>
+    <color name="zk_scrim">#BF000000</color>
+
+    <!-- Legacy aliases for Java/XML compat -->
+    <color name="colorPrimary">#C0003A</color>
+    <color name="colorPrimaryDark">#060A10</color>
+    <color name="colorAccent">#00E5FF</color>
+    <color name="window_background">#060A10</color>
+    <color name="background">#060A10</color>
+    <color name="background2">#0C1220</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="primaryText">#FFFFFF</color>
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#8899BB</color>
+    <color name="error">#FF1744</color>
+    <color name="red">#FF1744</color>
+    <color name="success">#00E676</color>
+    <color name="primary">#C0003A</color>
+    <color name="ic_launcher_background">#000000</color>
+</resources>

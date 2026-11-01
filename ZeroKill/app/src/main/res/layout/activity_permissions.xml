@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout android:gravity="center" android:orientation="vertical" android:background="#ff101010" android:padding="32.0dip" android:fitsSystemWindows="true" android:layout_width="fill_parent" android:layout_height="fill_parent"
+  xmlns:android="http://schemas.android.com/apk/res/android">
+    <TextView android:textSize="24.0sp" android:textColor="#ffffffff" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/permissions_title" android:fontFamily="@font/font" />
+    <TextView android:textSize="17.0sp" android:textColor="#ffcccccc" android:gravity="center" android:id="@+id/permissionStatus" android:layout_width="fill_parent" android:layout_height="wrap_content" android:layout_marginTop="20.0dip" android:text="@string/permissions_storage" android:fontFamily="@font/font" />
+    <Button android:textColor="#ffffffff" android:id="@+id/permissionRetry" android:layout_width="200.0dip" android:layout_height="wrap_content" android:layout_marginTop="24.0dip" android:minHeight="48.0dip" android:text="@string/permissions_allow" android:textAllCaps="false" android:fontFamily="@font/font" android:backgroundTint="#ffd5630d" />
+</LinearLayout>
