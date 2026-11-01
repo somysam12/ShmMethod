@@ -2406,7 +2406,7 @@ Java_com_bgmi_utils_Downtwo_Link(JNIEnv *env, jclass) {
 
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_bgmi_ArkApplication_getSdkKey(JNIEnv *env, jclass) {
-    return env->NewStringUTF("");
+    return env->NewStringUTF("HCORE");
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
