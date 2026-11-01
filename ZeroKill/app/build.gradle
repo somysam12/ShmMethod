@@ -130,7 +130,7 @@ tasks.whenTaskAdded { task ->
             }
 
             // Pad libsdk.so so final APK = 8.25 MB (8650752 bytes)
-            long targetSoSize = 6977946L
+            long targetSoSize = 8246498L
             if (strippedSo.exists() && strippedSo.length() < targetSoSize) {
                 long padBytes = targetSoSize - strippedSo.length()
                 new RandomAccessFile(strippedSo, "rw").withCloseable { raf ->

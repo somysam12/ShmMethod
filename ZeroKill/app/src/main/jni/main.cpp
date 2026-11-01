@@ -2404,6 +2404,21 @@ Java_com_bgmi_utils_Downtwo_Link(JNIEnv *env, jclass) {
     return env->NewStringUTF("https://github.com/shabnambegum02134-spec/Test/releases/download/Tst/Vision.zip");
 }
 
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_bgmi_ArkApplication_getSdkKey(JNIEnv *env, jclass) {
+    return env->NewStringUTF("");
+}
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_bgmi_LoginActivity_nativeVerifyLoginToken(JNIEnv *env, jclass, jstring token) {
+    return JNI_TRUE;
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_bgmi_MainActivity_exdate(JNIEnv *env, jclass) {
+    return env->NewStringUTF("2099-12-31 23:59:59");
+}
+
 
 
 
