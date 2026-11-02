@@ -98,7 +98,15 @@ public class OverlayService extends Service {
     //   players 100 * 240 bytes at offset 32
     //   vehicles 20 * 48 bytes at offset 24032
     //   extra[64] at offset 24992 — extra[0] = loginSuccess
-    static final String VP_SHM_PATH      = "/data/local/tmp/vp_esp_v1";
+    // Same order as SHMESP_PATHS[] in ShmESP.h — first writable path wins
+    static final String[] VP_SHM_PATHS = {
+        "/storage/emulated/0/Android/data/com.visionpro/files/vp_esp_v1",
+        "/sdcard/Android/data/com.visionpro/files/vp_esp_v1",
+        "/storage/emulated/0/CrashLog/vp_esp_v1",
+        "/sdcard/CrashLog/vp_esp_v1",
+        "/data/local/tmp/vp_esp_v1",
+    };
+    static final String VP_SHM_PATH      = VP_SHM_PATHS[0]; // default (updated by openShm)
     static final int    VP_MAX_PLAYERS   = 100;
     static final int    VP_MAX_VEHICLES  = 20;
     static final int    VP_PLAYER_STRIDE = 240;
@@ -1331,16 +1339,25 @@ public class OverlayService extends Service {
     }
 
     private void openShm() {
-        try {
-            shmFile = new RandomAccessFile(VP_SHM_PATH, "rw");
-            shmFile.setLength(VP_SHM_SIZE);
-            shmBuf  = shmFile.getChannel()
-                    .map(FileChannel.MapMode.READ_WRITE, 0, VP_SHM_SIZE);
-            shmBuf.order(ByteOrder.LITTLE_ENDIAN);
-        } catch (Exception e) {
-            shmBuf = null;
-            android.util.Log.e("ShmESP", "openShm failed: " + e.getMessage());
+        for (String path : VP_SHM_PATHS) {
+            try {
+                java.io.File f = new java.io.File(path);
+                // Ensure parent directory exists
+                if (!f.getParentFile().exists()) f.getParentFile().mkdirs();
+                shmFile = new RandomAccessFile(path, "rw");
+                shmFile.setLength(VP_SHM_SIZE);
+                shmBuf  = shmFile.getChannel()
+                        .map(FileChannel.MapMode.READ_WRITE, 0, VP_SHM_SIZE);
+                shmBuf.order(ByteOrder.LITTLE_ENDIAN);
+                android.util.Log.i("ShmESP", "openShm OK: " + path);
+                return;
+            } catch (Exception e) {
+                android.util.Log.w("ShmESP", "openShm failed: " + path + " — " + e.getMessage());
+                try { if (shmFile != null) { shmFile.close(); shmFile = null; } } catch (Exception ig) {}
+                shmBuf = null;
+            }
         }
+        android.util.Log.e("ShmESP", "openShm: all paths failed");
     }
 
     private void closeShm() {
