@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- outer ring -->
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="#00000000"/>
+            <stroke android:width="2dp" android:color="#2E7CFF"/>
+        </shape>
+    </item>
+    <!-- inner ring -->
+    <item android:left="12dp" android:top="12dp" android:right="12dp" android:bottom="12dp">
+        <shape android:shape="oval">
+            <solid android:color="#0A0201"/>
+            <stroke android:width="3dp" android:color="#1E5FE0"/>
+        </shape>
+    </item>
+</layer-list>

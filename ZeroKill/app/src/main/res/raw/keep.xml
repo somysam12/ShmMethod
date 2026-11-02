@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  R8 resource shrinker cannot see resources referenced only through
+  Resources.getIdentifier() (OverlayService uses res("ic_flame","drawable")
+  etc.). Without this, the shrinker strips ic_flame / ic_check and the
+  COMBAT / MISC tab icons render blank. Keep every icon + logo the menu
+  loads dynamically.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/gz_*,@drawable/ic_*,@drawable/ark_*,@drawable/bgmi_*,@drawable/fire_*,@drawable/glass_*,@drawable/orb_*"
+    tools:shrinkMode="safe" />

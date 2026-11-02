@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout android:orientation="vertical" android:id="@+id/virtualDeviceIdPanel" android:padding="8.0dip" android:visibility="gone" android:layout_width="fill_parent" android:layout_height="wrap_content"
+  xmlns:android="http://schemas.android.com/apk/res/android">
+    <TextView android:textSize="13.0sp" android:textStyle="bold" android:textColor="#ffc252ff" android:layout_width="fill_parent" android:layout_height="wrap_content" android:layout_marginBottom="10.0dip" android:text="DEVICE ID" android:fontFamily="@font/font" />
+    <TextView android:textSize="12.0sp" android:textColor="#ffcccccc" android:layout_width="fill_parent" android:layout_height="wrap_content" android:layout_marginBottom="12.0dip" android:text="Change your device ID to avoid 1-day and 12-hour flag bans." android:fontFamily="@font/font" />
+    <TextView android:textSize="12.0sp" android:textColor="#ffffffff" android:id="@+id/virtualDeviceIdStatus" android:layout_width="fill_parent" android:layout_height="wrap_content" android:layout_marginBottom="12.0dip" android:text="Loading..." android:fontFamily="@font/font" />
+    <Button android:textColor="#ffffffff" android:id="@+id/virtualDeviceIdChange" android:layout_width="fill_parent" android:layout_height="wrap_content" android:minHeight="48.0dip" android:text="Change Device ID" android:textAllCaps="false" android:fontFamily="@font/font" android:backgroundTint="#ff9425bd" />
+    <Button android:textColor="#ffffffff" android:id="@+id/virtualDeviceIdRestart" android:visibility="gone" android:layout_width="fill_parent" android:layout_height="wrap_content" android:layout_marginTop="8.0dip" android:minHeight="48.0dip" android:text="Restart Game" android:textAllCaps="false" android:fontFamily="@font/font" android:backgroundTint="#ff9425bd" />
+</LinearLayout>
