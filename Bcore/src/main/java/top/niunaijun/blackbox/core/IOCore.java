@@ -134,7 +134,21 @@ public class IOCore {
             if (BlackBoxCore.getContext().getExternalCacheDir() != null && context.getExternalCacheDir() != null) {
                 File external = BEnvironment.getExternalUserDir(BlackBoxCore.getUserId());
 
-                
+                // Specific OBB and external-data redirects. These MUST be inserted into the
+                // rule map BEFORE the general "/sdcard" and "/storage/emulated/<id>" entries so
+                // that the TrieTree's longest-prefix search picks them up correctly.
+                // Destination: host app's own Android/obb/<hostPkg>/ folder — always writable
+                // without MANAGE_EXTERNAL_STORAGE on Android 11+ (scoped storage exception).
+                File hostObbRoot = BEnvironment.getHostObbRoot();
+                String obbDst  = new File(hostObbRoot, "Android/obb").getAbsolutePath();
+                String dataDst = new File(hostObbRoot, "Android/data").getAbsolutePath();
+
+                rule.put("/sdcard/Android/obb", obbDst);
+                rule.put("/sdcard/Android/data", dataDst);
+                rule.put(String.format("/storage/emulated/%d/Android/obb", systemUserId), obbDst);
+                rule.put(String.format("/storage/emulated/%d/Android/data", systemUserId), dataDst);
+
+                // General sdcard redirect (less specific — matched only when no longer rule wins)
                 rule.put("/sdcard", external.getAbsolutePath());
                 rule.put(String.format("/storage/emulated/%d", systemUserId), external.getAbsolutePath());
 

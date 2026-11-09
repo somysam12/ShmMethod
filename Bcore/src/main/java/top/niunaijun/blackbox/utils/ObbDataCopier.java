@@ -29,7 +29,12 @@ public class ObbDataCopier {
                 "ObbCopier-" + packageName).start();
     }
 
-    /** Returns true if the host process has access to /sdcard/Android/obb and /data paths. */
+    /**
+     * Returns true if the host process can READ the real /sdcard/Android/obb and
+     * /sdcard/Android/data directories (source of the copy).
+     * On Android 11+ this requires MANAGE_EXTERNAL_STORAGE.
+     * Writing to the destination (host app's own OBB dir) is ALWAYS allowed.
+     */
     public static boolean hasStorageAccess() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             return Environment.isExternalStorageManager();
