@@ -70,5 +70,14 @@
     <string name="obb_copy_start">Copying game data in background...</string>
     <string name="obb_copy_progress">Copying %1$s... %2$d%%</string>
     <string name="obb_copy_complete">Game data copied successfully</string>
-    <string name="obb_no_data">No game data found to copy</string>
+    <string name="obb_no_data">No OBB/data found for this app</string>
+    <string name="obb_permission_missing">Grant \'All Files Access\' permission first (Settings shown)</string>
+    <string name="copy_obb">Copy OBB / Game Data</string>
+    <string name="inject_lib">Inject Library (.so)</string>
+    <string name="inject_lib_title">Select .so to inject into %s</string>
+    <string name="inject_lib_success">Library staged — will inject on next app launch</string>
+    <string name="inject_lib_replace">An inject.so already exists for %s. Replace it?</string>
+    <string name="inject_lib_cleared">Inject library removed for %s</string>
+    <string name="unknown_sources">Allow Install Unknown Apps</string>
+    <string name="unknown_sources_hint">Opens system settings so this app can install APKs from outside the Play Store</string>
 </resources>

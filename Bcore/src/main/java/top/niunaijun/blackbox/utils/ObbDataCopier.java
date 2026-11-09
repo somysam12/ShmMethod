@@ -1,5 +1,6 @@
 package top.niunaijun.blackbox.utils;
 
+import android.os.Build;
 import android.os.Environment;
 import android.util.Log;
 
@@ -19,6 +20,8 @@ public class ObbDataCopier {
     public interface ProgressCallback {
         void onProgress(String phase, int percentage, long bytesDone, long totalBytes);
         void onComplete(boolean anyCopied, String message);
+        /** Called when MANAGE_EXTERNAL_STORAGE permission is not granted on Android 11+ */
+        default void onPermissionMissing() {}
     }
 
     public static void copyInBackground(String packageName, int userId, ProgressCallback callback) {
@@ -26,7 +29,23 @@ public class ObbDataCopier {
                 "ObbCopier-" + packageName).start();
     }
 
+    /** Returns true if the host process has access to /sdcard/Android/obb and /data paths. */
+    public static boolean hasStorageAccess() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            return Environment.isExternalStorageManager();
+        }
+        // On Android 10 and below, legacy WRITE_EXTERNAL_STORAGE is enough.
+        return true;
+    }
+
     public static void copyObbAndData(String packageName, int userId, ProgressCallback callback) {
+        // Guard: on Android 11+ we need MANAGE_EXTERNAL_STORAGE to read Android/obb & Android/data
+        if (!hasStorageAccess()) {
+            Log.w(TAG, "MANAGE_EXTERNAL_STORAGE not granted — cannot copy OBB/data for " + packageName);
+            if (callback != null) callback.onPermissionMissing();
+            return;
+        }
+
         boolean anyCopied = false;
         String sdcard = Environment.getExternalStorageDirectory().getAbsolutePath();
 
@@ -35,7 +54,10 @@ public class ObbDataCopier {
         File dstObb = BEnvironment.getExternalObbDir(packageName, userId);
         if (srcObb.exists() && srcObb.isDirectory()) {
             try {
-                if (!dstObb.exists()) dstObb.mkdirs();
+                if (!dstObb.exists()) {
+                    boolean created = dstObb.mkdirs();
+                    if (!created) Log.w(TAG, "mkdirs failed for OBB dst: " + dstObb);
+                }
                 // Skip if already copied
                 File[] existing = dstObb.listFiles(f -> f.getName().endsWith(".obb"));
                 if (existing == null || existing.length == 0) {
@@ -51,6 +73,8 @@ public class ObbDataCopier {
             } catch (Exception e) {
                 Log.e(TAG, "OBB copy failed for " + packageName + ": " + e.getMessage());
             }
+        } else {
+            Log.d(TAG, "No OBB source dir for " + packageName + " at " + srcObb.getAbsolutePath());
         }
 
         // 2. Copy external data /sdcard/Android/data/<pkg>
@@ -91,7 +115,7 @@ public class ObbDataCopier {
         }
 
         if (callback != null) {
-            callback.onComplete(anyCopied, anyCopied ? "Data copy complete" : "No data to copy");
+            callback.onComplete(anyCopied, anyCopied ? "Data copy complete" : "No OBB/data found");
         }
     }
 

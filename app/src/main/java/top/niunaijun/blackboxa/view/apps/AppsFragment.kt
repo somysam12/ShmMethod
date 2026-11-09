@@ -1,13 +1,18 @@
 package top.niunaijun.blackboxa.view.apps
 
+import android.content.Intent
 import android.graphics.Point
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.text.TextUtils
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.widget.PopupMenu
 import androidx.core.os.bundleOf
 import androidx.fragment.app.Fragment
@@ -18,6 +23,8 @@ import androidx.recyclerview.widget.RecyclerView
 import cbfg.rvadapter.RVAdapter
 import com.afollestad.materialdialogs.MaterialDialog
 import top.niunaijun.blackbox.BlackBoxCore
+import top.niunaijun.blackbox.core.env.BEnvironment
+import top.niunaijun.blackbox.utils.ObbDataCopier
 import top.niunaijun.blackboxa.R
 import top.niunaijun.blackboxa.bean.AppInfo
 import top.niunaijun.blackboxa.databinding.FragmentAppsBinding
@@ -28,6 +35,9 @@ import top.niunaijun.blackboxa.util.MemoryManager
 import top.niunaijun.blackboxa.util.toast
 import top.niunaijun.blackboxa.view.base.LoadingActivity
 import top.niunaijun.blackboxa.view.main.MainActivity
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.util.*
 import kotlin.math.abs
 
@@ -44,6 +54,18 @@ class AppsFragment : Fragment() {
     private val viewBinding: FragmentAppsBinding by inflate()
 
     private var popupMenu: PopupMenu? = null
+
+    /** Holds AppInfo while user picks .so from file manager */
+    private var pendingInjectTarget: AppInfo? = null
+
+    private val soPickerLauncher = registerForActivityResult(
+        ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        uri ?: return@registerForActivityResult
+        val target = pendingInjectTarget ?: return@registerForActivityResult
+        pendingInjectTarget = null
+        stageInjectLib(target, uri)
+    }
 
     companion object {
         private const val TAG = "AppsFragment"
@@ -359,6 +381,18 @@ class AppsFragment : Fragment() {
                                     R.id.app_shortcut -> {
                                         ShortcutUtil.createShortcut(requireContext(), userID, data)
                                     }
+
+                                    R.id.app_inject_lib -> {
+                                        showInjectLibDialog(data)
+                                    }
+
+                                    R.id.app_copy_obb -> {
+                                        triggerObbCopy(data)
+                                    }
+
+                                    R.id.app_unknown_sources -> {
+                                        openUnknownSourcesSettings()
+                                    }
                                 }
                                 return@setOnMenuItemClickListener true
                             } catch (e: Exception) {
@@ -555,6 +589,119 @@ class AppsFragment : Fragment() {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error hiding loading: ${e.message}")
+        }
+    }
+
+    // ── Inject Library ──────────────────────────────────────────────────────
+
+    private fun showInjectLibDialog(info: AppInfo) {
+        try {
+            val existingInject = getInjectLibFile(info.packageName)
+            if (existingInject.exists()) {
+                MaterialDialog(requireContext()).show {
+                    title(R.string.inject_lib)
+                    message(text = getString(R.string.inject_lib_replace, info.name))
+                    positiveButton(R.string.done) { launchSoPicker(info) }
+                    negativeButton(text = "Remove") {
+                        existingInject.delete()
+                        requireContext().toast(getString(R.string.inject_lib_cleared, info.name))
+                    }
+                }
+            } else {
+                launchSoPicker(info)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error showing inject lib dialog: ${e.message}")
+        }
+    }
+
+    private fun launchSoPicker(info: AppInfo) {
+        pendingInjectTarget = info
+        try {
+            soPickerLauncher.launch(arrayOf("application/octet-stream", "*/*"))
+        } catch (e: Exception) {
+            Log.e(TAG, "Error launching so picker: ${e.message}")
+        }
+    }
+
+    private fun stageInjectLib(info: AppInfo, uri: Uri) {
+        Thread {
+            try {
+                val dst = getInjectLibFile(info.packageName)
+                dst.parentFile?.mkdirs()
+                requireContext().contentResolver.openInputStream(uri)?.use { input ->
+                    FileOutputStream(dst).use { output ->
+                        val buf = ByteArray(512 * 1024)
+                        var n: Int
+                        while (input.read(buf).also { n = it } != -1) output.write(buf, 0, n)
+                    }
+                }
+                requireActivity().runOnUiThread {
+                    requireContext().toast(getString(R.string.inject_lib_success))
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error staging inject lib: ${e.message}")
+                requireActivity().runOnUiThread {
+                    requireContext().toast("Inject failed: ${e.message}")
+                }
+            }
+        }.start()
+    }
+
+    private fun getInjectLibFile(packageName: String): File {
+        // Entry.java loads from app.getFilesDir()/inject.so — which maps to virtual files dir
+        return File(BEnvironment.getDataFilesDir(packageName, userID), "inject.so")
+    }
+
+    // ── OBB Copy ─────────────────────────────────────────────────────────────
+
+    private fun triggerObbCopy(info: AppInfo) {
+        if (!ObbDataCopier.hasStorageAccess()) {
+            requireContext().toast(getString(R.string.obb_permission_missing))
+            openAllFilesAccessSettings()
+            return
+        }
+        requireContext().toast(getString(R.string.obb_copy_start))
+        viewModel.copyObb(info.packageName, userID)
+    }
+
+    private fun openAllFilesAccessSettings() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION)
+                intent.data = Uri.parse("package:${requireContext().packageName}")
+                startActivity(intent)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error opening all files access settings: ${e.message}")
+        }
+    }
+
+    // ── Unknown Sources ───────────────────────────────────────────────────────
+
+    private fun openUnknownSourcesSettings() {
+        try {
+            MaterialDialog(requireContext()).show {
+                title(R.string.unknown_sources)
+                message(R.string.unknown_sources_hint)
+                positiveButton(R.string.done) {
+                    try {
+                        val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
+                        intent.data = Uri.parse("package:${requireContext().packageName}")
+                        startActivity(intent)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error opening unknown sources settings: ${e.message}")
+                        try {
+                            startActivity(Intent(Settings.ACTION_SECURITY_SETTINGS))
+                        } catch (e2: Exception) {
+                            Log.e(TAG, "Fallback security settings also failed: ${e2.message}")
+                        }
+                    }
+                }
+                negativeButton(R.string.cancel)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error showing unknown sources dialog: ${e.message}")
         }
     }
 }

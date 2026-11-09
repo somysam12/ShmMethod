@@ -421,6 +421,9 @@ class AppsRepository {
                             else getString(R.string.obb_no_data)
                         )
                     }
+                    override fun onPermissionMissing() {
+                        obbStatusLiveData?.postValue(getString(R.string.obb_permission_missing))
+                    }
                 })
             } else {
                 resultLiveData.postValue(getString(R.string.install_fail, installResult.msg))
@@ -430,6 +433,28 @@ class AppsRepository {
             Log.e(TAG, "Error installing APK: ${e.message}")
             resultLiveData.postValue("Installation failed: ${e.message}")
         }
+    }
+
+    fun copyObb(packageName: String, userId: Int, obbStatusLiveData: MutableLiveData<String>) {
+        obbStatusLiveData.postValue(getString(R.string.obb_copy_start))
+        ObbDataCopier.copyInBackground(packageName, userId, object : ObbDataCopier.ProgressCallback {
+            private var lastPct = -1
+            override fun onProgress(phase: String, percentage: Int, bytesDone: Long, totalBytes: Long) {
+                if (percentage / 10 > lastPct / 10) {
+                    lastPct = percentage
+                    obbStatusLiveData.postValue("$phase: $percentage%")
+                }
+            }
+            override fun onComplete(anyCopied: Boolean, message: String) {
+                obbStatusLiveData.postValue(
+                    if (anyCopied) getString(R.string.obb_copy_complete)
+                    else getString(R.string.obb_no_data)
+                )
+            }
+            override fun onPermissionMissing() {
+                obbStatusLiveData.postValue(getString(R.string.obb_permission_missing))
+            }
+        })
     }
 
     fun unInstall(packageName: String, userID: Int, resultLiveData: MutableLiveData<String>) {

@@ -80,4 +80,10 @@ class AppsViewModel(private val repo: AppsRepository) : BaseViewModel() {
             repo.updateApkOrder(userID,dataList)
         }
     }
+
+    fun copyObb(packageName: String, userId: Int) {
+        launchOnUI {
+            repo.copyObb(packageName, userId, obbStatusLiveData)
+        }
+    }
 }
