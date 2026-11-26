@@ -155,7 +155,7 @@ static void KC_BuildExpiryStr(char*, int);    // defined below
 
 // Renderer hook for GL screenshot + ImGui watermark/expiry/ESP
 #ifndef KC_RENDERER_OFFSET
-#define KC_RENDERER_OFFSET 0   // disabled — offset unverified for current BGMI build
+#define KC_RENDERER_OFFSET 0xB38DC64
 #endif
 __int64 (*orig_renderer)(__int64 *a, int b) = nullptr;
 __int64 hook_renderer(__int64 *a, int b) {
